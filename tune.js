@@ -18,6 +18,12 @@ const STYLE = [{ value: "0", label: "Rounded mounds" }, { value: "1", label: "Fr
 
 // Sliders: [folder, label, P key, min, max, step, scale (panel value = P value × scale)]
 const SLIDERS = [
+  ["Photographer","Route left / right (px)","routeX",-150,1000,5,1],
+  ["Photographer","Route near / far (m)","routeDepth",-4,4,.05,1],
+  ["Photographer","Height above ground (m)","footHeight",-.25,.75,.01,1],
+  ["Photographer","Walking speed (×)","walkSpeed",.25,3,.05,1],
+  ["Photographer","Pause after photo (s)","photoPause",0,5,.05,1],
+  ["Photographer","Character size","subject",0.5,3,0.05,1],
   ["Desk", "Left / right (m)", "deskX", -5, 5, 0.05, 1],
   ["Desk", "Near / far (m)", "deskDepth", -4, 4, 0.05, 1],
   ["Desk", "Desk elevation (cm)", "lift", -150, 80, 1, 100],
@@ -83,6 +89,7 @@ export async function mountTune(h) {
   function config(st = stateNow()) {
     const P = st.P;
     const c = {
+      Photographer: {},
       View: {
         View: { type: "select", options: VIEW, default: String(P.view) },
         Frame: { type: "select", options: FRAME, default: String(P.frame) },
