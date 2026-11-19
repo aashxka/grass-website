@@ -39,9 +39,9 @@ A segmented pill nav sits top centre, 24px from the top: Work, About, Experiment
 
 - Track: #F0F0F0, fully rounded, 5px padding, inner shadows #F7F7F7 (0 1 1) over #E0E0E0 (0 3 3).
 - Selected thumb: white, inner shadows #FAFAFA (0 −1 1) over #E3E3E3 (0 −2 3), drop shadow #5F5F5F at 10% (0 3 4, spread −1).
-- Text: Stevie Sans Book 16px, #1B1B1B selected and #878787 otherwise; items 38px tall with 20px side padding and 6px gaps.
+- Text: Stevie Sans Book 14px, #1B1B1B selected and #878787 otherwise; items 38px tall with 20px side padding and 6px gaps.
 
-Clicking an item slides the thumb to it (300 ms ease-out) and sets the URL hash (`#work`, `#about`, `#experiments`, `#photos`), so back and forward move it too. The pages behind them do not exist yet. Phones get 15px text and tighter padding so all four fit at 375px wide.
+Clicking an item slides the thumb to it (300 ms ease-out) and sets the URL hash (`#work`, `#about`, `#experiments`, `#photos`), so back and forward move it too. The pages behind them do not exist yet. Phones get tighter padding (and 13px text under 360px) so all four fit.
 
 ## Tune panel (`?tune`)
 
