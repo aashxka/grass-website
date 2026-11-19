@@ -15,7 +15,16 @@
   .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; background: var(--sky); }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 700ms var(--ease-out); }
   body.ready canvas { opacity: 1; }
-  .fps { display: none; position: absolute; right: 10px; top: 8px; font: 400 11px/1 ui-monospace, monospace; color: #5a616e; pointer-events: none; }
+  .fps { display: none; position: absolute; left: 10px; top: 8px; font: 400 11px/1 ui-monospace, monospace; color: #5a616e; pointer-events: none; }
+  /* Banner frame (tune panel): the banner's own 2000:513 strip, centred; phones crop its sides */
+  body.banner .stage { inset: auto 0; top: 50%; height: auto; aspect-ratio: 2000 / 513; transform: translateY(-50%); }
+  @media (max-aspect-ratio: 1/1) { body.banner .stage { aspect-ratio: 4 / 3; } }
+  .status {
+    position: fixed; left: 10px; bottom: 10px; font: 500 11px/1 ui-monospace, monospace; color: #1b1b1b;
+    background: rgba(255, 255, 255, 0.82); padding: 6px 9px; border-radius: 999px; pointer-events: none;
+    opacity: 0; transform: translateY(4px); transition: opacity 150ms ease-out, transform 150ms var(--ease-out);
+  }
+  body.reshaping .status { opacity: 1; transform: none; }
   @media (prefers-reduced-motion: reduce) { canvas { transition: none; } }
 </style>
 </head>
@@ -24,6 +33,7 @@
   <canvas id="gl" role="img" aria-label="Grass hills blowing in the wind, with a wooden desk, a cream computer and a coffee set"></canvas>
   <div class="fps" id="fps"></div>
 </main>
+<div class="status" aria-live="polite">Shaping hills…</div>
 
 <script type="module">
 import { grassBrush } from "./touch.js";
@@ -127,6 +137,7 @@ function pathMask(x, d) {
 // centre lands in that column range (banner px), so no smaller mound shows through behind it.
 // Left edge, the centre dip (plus the pale far sliver her pen line points at), right edge.
 const HIDE_FAR = [[-700, 250, 50], [780, 1090, 62], [1790, 2700, 50]];
+const HIDE = { far: true };   // "Hide circled hills" in the tune panel
 function hash2(i, j) { let h = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
 function moundsH(x, d) {
   const Sx = (W0 * GIRL.d / F0) / P.humps, Sd = 0.88 * Sx, R = 0.64 * P.hillW, r0 = Math.floor(d / Sd);
@@ -137,7 +148,7 @@ function moundsH(x, d) {
       const xc = (c + 0.5) * Sx + off + (hash2(r, c) - 0.5) * 0.22 * Sx;
       const dc = (r + 0.5) * Sd + (hash2(c + 91, r - 37) - 0.5) * 0.22 * Sd;
       if (dc > GIRL.d && P.background < 100 && hash2(r + 371, c - 83) >= P.background / 100) continue;
-      if (dc > GIRL.d) { const xs = CX0 + xc * F0 / dc; if (HIDE_FAR.some(([a, b, minD]) => dc > minD && xs >= a && xs <= b)) continue; }
+      if (HIDE.far && dc > GIRL.d) { const xs = CX0 + xc * F0 / dc; if (HIDE_FAR.some(([a, b, minD]) => dc > minD && xs >= a && xs <= b)) continue; }
       const q = ((x - xc) / (R * Sx)) ** 2 + ((d - dc) / (R * Sd)) ** 2;
       if (q < 1) acc += ((0.9 + 0.2 * hash2(r * 7 + 3, c * 5 - 11)) * (1 - q) * (1 - q)) ** 4;
     }
@@ -876,13 +887,16 @@ function updateCamera() {
   // Hero 16:9: the whole banner width fills the window and taller windows add sky above.
   // Narrow, tall windows (phones, portrait tablets) crop the sides around the desk instead, so the
   // grass and the desk keep a readable size rather than shrinking into a thin strip.
-  let s = W / W0, xL = 0, xR = W0;
+  let s = W / W0, xL = 0, xR = W0, yTop;
   const aspect = W / H;
-  if (aspect < 1.1) {
+  if (P.frame === 0) {
+    // Banner: the strip fits the width; a taller strip (phones) fills the height and crops the sides
+    if (H > W * H0 / W0 + 2) { s = H / H0; const span = W / s, c = Math.min(Math.max(1120, span / 2), W0 - span / 2); xL = c - span / 2; xR = c + span / 2; }
+  } else if (aspect < 1.1) {
     const span = W0 * Math.min(1, Math.max(0.36, aspect / 1.1)), c = Math.min(Math.max(1330, span / 2), W0 - span / 2);
     s = W / span; xL = c - span / 2; xR = c + span / 2;
   }
-  const yTop = H0 - H / s;
+  yTop = H0 - H / s;
   VIEWPORT.s = s; VIEWPORT.xL = xL; VIEWPORT.yTop = yTop;
   fpx = F0 * s;
   const n = 0.3, f = 600;
@@ -1050,13 +1064,21 @@ function render() {
 // ordinary 4.2 m/s day looks like; the gust bands travel across the field at the real speed.
 const SEATTLE = "https://api.open-meteo.com/v1/forecast?latitude=47.6062&longitude=-122.3321&current=wind_speed_10m,wind_gusts_10m&wind_speed_unit=ms";
 const REF_SPEED = 4.2, REF_GUST = 7.6;           // m/s at Strength 1 and Gusts 1
-const AIR = { speed: REF_SPEED, gusts: REF_GUST, live: false, target: { wind: P.wind, gust: P.gust, speed: REF_SPEED } };
-let windRun = 0;
+const AIR = { speed: REF_SPEED, live: false, base: null, target: { wind: P.wind, gust: P.gust, speed: REF_SPEED } };
+// The Wind dials. With Seattle live wind on, Strength and Gusts scale the live reading (1.00 = Seattle
+// as it is); with it off they are the plain grass-hills values.
+const WIND = { live: true, strength: P.wind, gusts: P.gust };
+let windRun = 0, liveTimer = 0;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+function retarget() {
+  const live = WIND.live && AIR.base;
+  AIR.target.wind = clamp((live ? AIR.base.wind : 1) * WIND.strength, 0, 2.5);
+  AIR.target.gust = clamp((live ? AIR.base.gust : 1) * WIND.gusts, 0, 2.5);
+  AIR.target.speed = live ? AIR.base.speed : REF_SPEED * (.55 + .45 * Math.min(WIND.gusts, 1.5));
+}
 function applyAir(speed, gusts) {
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  AIR.target.speed = clamp(speed, 0.3, 25);
-  AIR.target.wind = clamp(speed / REF_SPEED, 0.12, 2) * (REDUCED ? 0.35 : 1);
-  AIR.target.gust = clamp(gusts / REF_GUST, 0.15, 2);
+  AIR.base = { speed: clamp(speed, 0.3, 25), wind: clamp(speed / REF_SPEED, 0.12, 2), gust: clamp(gusts / REF_GUST, 0.15, 2) };
+  retarget();
 }
 async function fetchSeattleWind() {
   try {
@@ -1070,6 +1092,10 @@ async function fetchSeattleWind() {
     if (first && simTime < 1.5) { P.wind = AIR.target.wind; P.gust = AIR.target.gust; AIR.speed = AIR.target.speed; }
   } catch (err) { console.warn("Seattle wind unavailable, using the tuned breeze", err); }
 }
+function ensureLive() {
+  if (liveTimer) return;
+  fetchSeattleWind(); liveTimer = setInterval(fetchSeattleWind, 10 * 60 * 1000);
+}
 // ease toward a new reading over a few seconds so the field never lurches
 function stepAir(dt) {
   const k = 1 - Math.exp(-dt / 2.5);
@@ -1078,6 +1104,7 @@ function stepAir(dt) {
   AIR.speed += (AIR.target.speed - AIR.speed) * k;
   windRun += AIR.speed * dt;
 }
+const applyFrame = () => { document.body.classList.toggle("banner", P.frame === 0); updateCamera(); };
 const applySky = () => { document.documentElement.style.setProperty("--sky", PAL.sky); };
 applySky();
 
@@ -1086,10 +1113,11 @@ for (const k of Object.keys(DEFAULTS)) if (qs.has(k)) P[k] = parseFloat(qs.get(k
 if (qs.has("t")) simTime = parseFloat(qs.get("t"));
 if (qs.get("paused") === "1") paused = true;
 if (qs.get("desk") === "0") showDesk = false;
-const liveWind = !qs.has("wind") && !qs.has("gust") && qs.get("seattle") !== "0";
-if (liveWind) { fetchSeattleWind(); setInterval(fetchSeattleWind, 10 * 60 * 1000); }
-else AIR.target = { wind: P.wind, gust: P.gust, speed: REF_SPEED * (.55 + .45 * P.gust) };
-updateCamera();
+WIND.live = !qs.has("wind") && !qs.has("gust") && qs.get("seattle") !== "0";
+WIND.strength = P.wind; WIND.gusts = P.gust;
+retarget();
+if (WIND.live) ensureLive();
+applyFrame();
 
 // build, then run
 requestAnimationFrame(() => {
@@ -1119,7 +1147,15 @@ requestAnimationFrame(() => {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js").then(m => m.mountTune(tuneApi)).catch(err => console.warn("Tune panel could not load", err));
 });
+// Everything the DialKit tune panel (tune.js) reads and drives
+const tuneApi = {
+  P, PAL, PAL_DEFAULT, PAL_INFO, DEFAULTS, LAYERS, GIRL, HIDE, WIND, AIR, hiddenLayers, REDUCED,
+  get paused() { return paused; }, set paused(v) { paused = v; },
+  get showDesk() { return showDesk; }, set showDesk(v) { showDesk = v; },
+  scheduleReshape, scheduleOcclusion, scheduleLight, retarget, ensureLive, applySky, applyFrame,
+};
 window.__hills = {
   P, AIR, gl, canvas, render, LAYERS, terrainH, rebuild: upload, reshape: rebuildTerrain, get bladeCount() { return bladeCount; }, get siteLight() { return siteLight; },
   setTime: t => { simTime = t; },
