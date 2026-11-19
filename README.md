@@ -19,7 +19,7 @@ The hero from [grass-hills](https://github.com/aashxka/grass-hills) with her tun
 | Group | Settings |
 | --- | --- |
 | View | Scene, Hero 16:9 |
-| Desk | Left/right 2.00 m, near/far −1.05 m, elevation −35 cm, size 1.82×, angle −31°, monitor 1.40× |
+| Desk | Left/right 2.00 m, near/far −1.00 m, elevation −5 cm, size 1.06×, angle −31°, monitor 1.40× |
 | Coffee mug | Left/right 13 cm, back/front 0 cm, size 1.00× |
 | Hills | Rounded mounds, height 1.50×, background mounds 80%, 1 hump across, width 1.56× |
 | Light | Haze 0.89×, overall 1.11×, depth of field 0, glow 1.00× |

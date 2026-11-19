@@ -94,7 +94,7 @@ const PAL = { ...PAL_DEFAULT };
 
 const hiddenLayers = new Set();
 // Her tuned panel (grass-hills, 2026-11-18): Scene, Hero 16:9, Rounded mounds.
-const DEFAULTS = { background: 80, deskX: 2, deskDepth: -1.05, radius: 31, view: 0, frame: 1, depth: 1.5, haze: 0.89, overall: 1.11, len: 0.67, density: 1, base: 0.5, lav: 1, wind: 1, gust: 1, subject: 1, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: -0.35, gsize: 1.82, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
+const DEFAULTS = { background: 80, deskX: 2, deskDepth: -1, radius: 31, view: 0, frame: 1, depth: 1.5, haze: 0.89, overall: 1.11, len: 0.67, density: 1, base: 0.5, lav: 1, wind: 1, gust: 1, subject: 1, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: -0.05, gsize: 1.06, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
 // people who ask their system for less motion get a gentle breeze by default
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (REDUCED) DEFAULTS.wind = 0.35;
