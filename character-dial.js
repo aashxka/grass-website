@@ -1,10 +1,15 @@
 import {createDialKit,createDialRoot} from './vendor/dialkit/index.js';
 import {fetchControls} from './fetch.js';
-export function mountCharacterDial(scene,game) {
+export async function mountCharacterDial(scene,game) {
   const css=document.createElement('link');
   css.rel='stylesheet';
   css.href='./vendor/dialkit/styles.css';
-  document.head.append(css);
+  const styled = await new Promise(resolve => {
+    css.onload = () => resolve(true);
+    css.onerror = () => resolve(false);
+    document.head.append(css);
+  });
+  if (!styled) return;
   createDialRoot({position:'top-right',theme:'system',defaultOpen:true});
   const controls = {
     'Character size': ['subject', .5, 3, .05],
