@@ -19,12 +19,12 @@ The hero from [grass-hills](https://github.com/aashxka/grass-hills) with her tun
 | Group | Settings |
 | --- | --- |
 | View | Scene, Hero 16:9 |
-| Desk | Left/right 2.00 m, near/far −1.00 m, elevation 12 cm, size 1.06×, angle −31°, monitor 1.40× |
+| Desk | Hidden (`?desk=1` shows it); its place: left/right 2.60 m, near/far −1.10 m, elevation 2 cm, size 1.38×, angle −31°, monitor 1.40× |
 | Coffee mug | Left/right 13 cm, back/front 0 cm, size 1.00× |
-| Hills | Rounded mounds, height 1.50×, background mounds 80%, 1 hump across, width 1.56× |
-| Light | Haze 0.89×, overall 1.11×, depth of field 0, glow 1.00× |
-| Grass | Impact radius 27 px, length 0.84×, density 238%, base 50%, lavender 0.67× |
-| Colours | The grass-hills defaults (background #ffffff, blade root #1a662e … computer #d9cbb1), except tip highlight #275927 |
+| Hills | Rounded mounds, height 0.92×, background mounds 80%, 1 hump across, width 1.56×, circled hills hidden |
+| Light | Haze 1.05×, overall 1.11×, depth of field 0, glow 1.00× |
+| Grass | Impact radius 28 px, length 0.54×, density 169%, base 50%, lavender 0.50× |
+| Colours | The grass-hills defaults (background #ffffff … computer #d9cbb1), except a darker blade: root #092c11, lower #266231, mid #183e13, and tip highlight #577214 |
 
 Changes from grass-hills:
 

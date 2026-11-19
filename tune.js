@@ -76,7 +76,7 @@ export async function mountTune(h) {
   });
   const stateDefault = () => ({
     P: { ...DEFAULTS }, hideFar: true, hidden: new Set(), live: true, strength: DEFAULTS.wind, gusts: DEFAULTS.gust,
-    showDesk: true, paused: false,
+    showDesk: false, paused: false,
   });
 
   // the panel layout for a hill style, with that state's values as its defaults

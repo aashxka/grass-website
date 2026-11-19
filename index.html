@@ -247,8 +247,8 @@ const GIRL = { xs: 1170, d: 15.5, hPx: 175, imgW: 445, imgH: 345 };
 // Palette sampled from the banner
 // Every colour is editable in the Colours panel. Each maps to one shader uniform.
 const PAL_DEFAULT = {
-  sky: "#ffffff", root: "#1a662e", lower: "#397442", midBlade: "#2d4929", shade: "#223a21", sunlit: "#767e4a",
-  tipGreen: "#275927", straw: "#c4a99f", lav: "#b28e9e", lavBright: "#cea8b6", base: "#163c1f", dark: "#3a643f",
+  sky: "#ffffff", root: "#092c11", lower: "#266231", midBlade: "#183e13", shade: "#223a21", sunlit: "#767e4a",
+  tipGreen: "#577214", straw: "#c4a99f", lav: "#b28e9e", lavBright: "#cea8b6", base: "#163c1f", dark: "#3a643f",
   wood: "#c76d29", plastic: "#d9cbb1", fabric: "#bb7847",
 };
 const PAL_INFO = [
@@ -261,9 +261,10 @@ const PAL_INFO = [
 const PAL = { ...PAL_DEFAULT };
 
 const hiddenLayers = new Set();
-// Her tuned panel (grass-hills, 2026-11-18): Scene, Hero 16:9, Rounded mounds. Re-tuned in ?tune the same
-// evening: desk elevation 12 cm, impact radius 27, grass length 0.84, density 238%, lavender 0.67, tip highlight #275927.
-const DEFAULTS = { background: 80, deskX: 2, deskDepth: -1, radius: 27, view: 0, frame: 1, depth: 1.5, haze: 0.89, overall: 1.11, len: 0.84, density: 2.38, base: 0.5, lav: 0.67, wind: 1, gust: 1, subject: 1, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: 0.12, gsize: 1.06, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
+// Her tuned panel, copied from ?tune (2026-11-19): Scene, Hero 16:9, Rounded mounds at height 0.92, desk hidden
+// (its place kept: 2.6 m right, 1.1 m nearer, 2 cm up, size 1.38), haze 1.05, impact radius 28, grass length 0.54,
+// density 169%, lavender 0.5, darker blade root/lower/mid and tip highlight #577214 (PAL_DEFAULT).
+const DEFAULTS = { background: 80, deskX: 2.6, deskDepth: -1.1, radius: 28, view: 0, frame: 1, depth: 0.92, haze: 1.05, overall: 1.11, len: 0.54, density: 1.69, base: 0.5, lav: 0.5, wind: 1, gust: 1, subject: 1, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: 0.02, gsize: 1.38, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
 // people who ask their system for less motion get a gentle breeze by default
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (REDUCED) DEFAULTS.wind = 0.35;
@@ -1138,7 +1139,7 @@ let TONE_IN = [0.2519, 0.3151, 0.3764, 0.4135, 0.4537, 0.498, 0.5737, 0.6544, 1.
 let TONE_OUT = [0.1367, 0.16, 0.208, 0.2757, 0.3857, 0.5052, 0.6003, 0.6976, 1.0];
 let rawTone = false;
 
-let simTime = 0, paused = false, showDesk = true;
+let simTime = 0, paused = false, showDesk = false;   // her tuned panel hides the desk set; ?desk=1 brings it back
 // the desk set stands where she sits; Lift and Size move and scale it like her
 const SET = { get yaw() { return P.angle * Math.PI / 180; }, dx: -0.1 };
 // ground under a point of the set (set frame, metres) in world height
@@ -1326,7 +1327,8 @@ const qs = new URLSearchParams(location.search);
 for (const k of Object.keys(DEFAULTS)) if (qs.has(k)) P[k] = parseFloat(qs.get(k));
 if (qs.has("t")) simTime = parseFloat(qs.get("t"));
 if (qs.get("paused") === "1") paused = true;
-if (qs.get("desk") === "0") showDesk = false;
+if (qs.has("desk")) showDesk = qs.get("desk") !== "0";
+if (!showDesk) canvas.setAttribute("aria-label", "Grass hills blowing in Seattle's wind");
 WIND.live = !qs.has("wind") && !qs.has("gust") && qs.get("seattle") !== "0";
 WIND.strength = P.wind; WIND.gusts = P.gust;
 retarget();
