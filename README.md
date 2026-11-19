@@ -47,9 +47,13 @@ Clicking an item slides the thumb to it (260 ms ease-out) and sets the URL hash 
 
 Top right, 60px from the edge: three flat icon buttons (mail, LinkedIn, resume) sitting straight on the page, with no track or thumb. Each sits in an invisible 32px button against the nav's 48px bar, centred on the nav's centre line. At rest the icons are #1B1B1B at 53%, which lands on the nav's unselected #878787; on hover they go to full ink, with no circle or edge around them. Each presses in to 0.96 while held, and has a 36 × 40 hit area. Below 820px wide they sit centred, 8px under the nav.
 
-The icons are one set of inline SVGs, each exactly 14 × 14px: the same rounded square (radius 3) holds every glyph. Mail is the flap folding in from the corners to the centre, LinkedIn is Stevie's own "in" with its square i-dot, and the resume has its top-right corner folded with three lines of text. They are drawn in Stevie Sans Book's own weight: 1.15px strokes (the font's stems are 0.081em, 1.13px at the nav's 14px), with flat-cut ends and sharp joins like its terminals.
+The icons are one set drawn from Stevie Sans Book itself, each exactly 14 × 14px. They live in the font's 1000-unit em at the nav's 14px, so every weight matches the text: walls 81 units thick on the sides (its stems) and 68 on top and bottom (its arms), corners shaped like its o (a superellipse, exponent 2.23 outside and 2.32 inside), and diagonals 75 like its v. Mail is a v-shaped flap with the v's flat-cut point. LinkedIn is the font's real i and n, scaled into the square and thickened back to its weight, so the notched shoulder and square dot are Stevie's own. The resume has a folded corner (one stem, one arm) and lines cut like its hyphen and en dash. The geometry was read from the installed `Stevie Sans Book.ttf` outlines.
 
 Mail copies aashikaashok.work@gmail.com and shows a flat "Email copied" label under the mail icon (if the clipboard is blocked it opens the mail app instead); LinkedIn opens her profile in a new tab; Resume opens `aashika-ashok-resume.pdf` in a new tab.
+
+### Seattle line
+
+Bottom right, 60px from the edge and 24px from the bottom (20px on phones), in white over the grass: Seattle's local time and the live wind, for example "8:37 PM PST in Seattle · 4 mph S wind". The time comes from `Intl.DateTimeFormat` in America/Los_Angeles and ticks over on the minute. The wind is the same Open-Meteo reading that drives the grass (speed in mph, compass direction it blows from), refreshed every 10 minutes; under 1 mph it says "calm". Without a reading (offline or `?seattle=0`) it shows the time alone. Stevie Sans Book 14px at 92% white with a soft shadow, fading in with the scene; it ignores the pointer so the grass under it still parts.
 
 ## Tune panel (`?tune`)
 
