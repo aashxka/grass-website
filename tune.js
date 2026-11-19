@@ -6,7 +6,7 @@
 //   Coffee mug  left/right, back/front, size
 //   Hills       style, height, background mounds, humps, width, circled hills, banner hills
 //   Light       haze, overall, depth of field, glow
-//   Grass       impact radius, length, density, base, lavender
+//   Grass       impact radius, length, density (15–300%), base, lavender
 //   Wind        Seattle live wind, strength, gusts, pause
 //   Colours     all 14 pickers, reset colours
 //   Reset       back to the tuned defaults (colours stay, as in grass-hills)
@@ -37,7 +37,7 @@ const SLIDERS = [
   ["Light", "Glow", "glow", 0, 2, 0.01, 1],
   ["Grass", "Impact radius (px)", "radius", 24, 180, 1, 1],
   ["Grass", "Grass length", "len", 0.4, 1.8, 0.01, 1],
-  ["Grass", "Density (%)", "density", 15, 100, 1, 100],
+  ["Grass", "Density (%)", "density", 15, 300, 1, 100],   // above 100% grows more blades
   ["Grass", "Base (%)", "base", 0, 100, 1, 100],
   ["Grass", "Lavender", "lav", 0, 2, 0.01, 1],
 ];
@@ -161,6 +161,7 @@ export async function mountTune(h) {
       if (PAL[key] !== hex) { PAL[key] = hex; if (key === "sky") h.applySky(); }
     }
     if (changed.has("frame")) h.applyFrame();
+    if (changed.has("density")) h.scheduleBlades();
     if (changed.has("len") || changed.has("depth")) h.scheduleOcclusion();
     if (changed.has("depth")) h.scheduleLight();
     if ([...changed].some(key => RESHAPE.has(key))) h.scheduleReshape();

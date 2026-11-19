@@ -2,7 +2,7 @@
 
 Aashika's portfolio hero: rolling grass hills, a wooden desk with a cream computer and a coffee set, drawn in real time with WebGL2. Every blade is its own shape and sways on its own, and the wind follows Seattle's live wind.
 
-It is a static page with no build step: `index.html`, `desk.js` (the desk set), `touch.js` (blades part under the cursor or a finger), `crt-face.jpg` (the screen), `fonts/stevie-sans-book.woff` (the nav font), and `tune.js` + `vendor/dialkit/` for the optional tune panel.
+It is a static page with no build step: `index.html`, `desk.js` (the desk set), `touch.js` (blades part under the cursor or a finger), `crt-face.jpg` (the screen), `fonts/stevie-sans-book.woff` (the nav font), `aashika-ashok-resume.pdf` (the contact bar's resume), and `tune.js` + `vendor/dialkit/` for the optional tune panel.
 
 ## Run it
 
@@ -19,12 +19,12 @@ The hero from [grass-hills](https://github.com/aashxka/grass-hills) with her tun
 | Group | Settings |
 | --- | --- |
 | View | Scene, Hero 16:9 |
-| Desk | Left/right 2.00 m, near/far −1.00 m, elevation −5 cm, size 1.06×, angle −31°, monitor 1.40× |
+| Desk | Left/right 2.00 m, near/far −1.00 m, elevation 12 cm, size 1.06×, angle −31°, monitor 1.40× |
 | Coffee mug | Left/right 13 cm, back/front 0 cm, size 1.00× |
 | Hills | Rounded mounds, height 1.50×, background mounds 80%, 1 hump across, width 1.56× |
 | Light | Haze 0.89×, overall 1.11×, depth of field 0, glow 1.00× |
-| Grass | Impact radius 31 px, length 0.67×, density 100%, base 50%, lavender 1.00× |
-| Colours | The grass-hills defaults (background #ffffff, blade root #1a662e … computer #d9cbb1) |
+| Grass | Impact radius 27 px, length 0.84×, density 238%, base 50%, lavender 0.67× |
+| Colours | The grass-hills defaults (background #ffffff, blade root #1a662e … computer #d9cbb1), except tip highlight #275927 |
 
 Changes from grass-hills:
 
@@ -41,7 +41,11 @@ A segmented pill nav sits top centre, 24px from the top: Work, About, Experiment
 - Selected thumb: white, inner shadows #FAFAFA (0 −1 1) over #E3E3E3 (0 −2 3), drop shadow #5F5F5F at 10% (0 3 4, spread −1).
 - Text: Stevie Sans Book 14px, #1B1B1B selected and #878787 otherwise; items 38px tall with 20px side padding and 6px gaps.
 
-Clicking an item slides the thumb to it (300 ms ease-out) and sets the URL hash (`#work`, `#about`, `#experiments`, `#photos`), so back and forward move it too. The pages behind them do not exist yet. Phones get tighter padding (and 13px text under 360px) so all four fit.
+Clicking an item slides the thumb to it (260 ms ease-out) and sets the URL hash (`#work`, `#about`, `#experiments`, `#photos`), so back and forward move it too. The pages behind them do not exist yet. Phones get tighter padding (and 13px text under 360px) so all four fit.
+
+### Contact bar
+
+Top right, 60px from the edge and 24px from the top: the same track with three round slots for mail, LinkedIn and resume icons. The icons are inline SVGs redrawn from her drawings in Stevie Sans Book's own weight: 1.15px strokes (the font's stems are 0.081em, 1.13px at the nav's 14px), flat-cut ends and sharp joins like its terminals, and the LinkedIn "in" built from Stevie's own "in" proportions with its square dot. They take the nav's colours: #878787, #1B1B1B on hover. Nothing is selected. The white thumb fades in under the icon you hover, focus or press, glides between icons on the same 260 ms curve as the nav, and fades out when you leave. Every item presses in slightly (0.96–0.97) while held. Mail copies aashikaashok.work@gmail.com and shows "Email copied" under the mail icon (if the clipboard is blocked it opens the mail app instead); LinkedIn opens her profile in a new tab; Resume opens `aashika-ashok-resume.pdf` in a new tab. Below 820px wide it sits centred under the nav.
 
 ## Tune panel (`?tune`)
 
@@ -54,7 +58,7 @@ Add `?tune` to the URL to open a [DialKit](https://github.com/joshpuckett/dialki
 | Coffee mug | Left/right (cm), back/front (cm), mug size |
 | Hills | Style (Rounded mounds / From banner / Valley), hill height, hill width; Rounded mounds adds background mounds (%), humps and **Hide circled hills**; From banner adds a toggle for each background hill |
 | Light | Haze, overall, depth of field, glow |
-| Grass | Impact radius (px), grass length, density (%), base (%), lavender |
+| Grass | Impact radius (px), grass length, density (15–300%; above 100% the page grows extra blades between the existing ones, in quarter steps, with a "Growing grass…" pill), base (%), lavender |
 | Wind | **Seattle live wind**, strength, gusts, pause wind. With live wind on, strength and gusts scale Seattle's reading (1.00 = as it is); off, they work as on grass-hills |
 | Colours | All 14 colours, Reset colours |
 | Reset | Back to the tuned look (colours stay, as on grass-hills) |
