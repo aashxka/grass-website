@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aashika — Portfolio</title>
+<meta name="description" content="Rolling grass hills with a desk and a computer, blowing in Seattle's live wind.">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+<style>
+  :root { --sky: #ffffff; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--sky); overflow: hidden; }
+  /* the hero fills the window; on phones the dynamic viewport keeps it under the browser bars */
+  .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; background: var(--sky); }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 700ms var(--ease-out); }
+  body.ready canvas { opacity: 1; }
+  .fps { display: none; position: absolute; right: 10px; top: 8px; font: 400 11px/1 ui-monospace, monospace; color: #5a616e; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { canvas { transition: none; } }
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <canvas id="gl" role="img" aria-label="Grass hills blowing in the wind, with a wooden desk, a cream computer and a coffee set"></canvas>
+  <div class="fps" id="fps"></div>
+</main>
+
+<script type="module">
+import { grassBrush } from "./touch.js";
+import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
+// ============================================================================
+// Reference camera, measured from the banner (2000 x 513).
+// A camera 1.0 m up with a 14 degree vertical field of view (horizon at row 304)
+// puts her chair on the ground at 15.5 m and reproduces every traced ridge below.
+// ============================================================================
+const W0 = 2000, H0 = 513, CX0 = 1000, CY0 = 256.5;
+const F0 = CY0 / Math.tan(7 * Math.PI / 180);    // 2089 px focal length at banner scale
+const HC = 1.0;                                  // eye height (m): low, so near grass reads side-on like the banner
+const HY = 439 - F0 * HC / 15.5;                 // horizon row (304): puts her chair base on the ground at 15.5 m
+const TIP0 = 0.72;                               // visible grass-top height used when tracing
+
+// Ridge lines traced from the banner: grass-top screen y per screen x, and
+// the depth (m) each hill sits at. Ground height follows from the camera.
+const LAYERS = [
+  { name: "back-left",   d: 70,   wf: 10,  wb: 12, pts: [[-300,222],[0,200],[100,194],[200,184],[300,177],[350,178],[400,181],[500,193],[600,209],[700,223],[800,245],[900,290],[1000,340]] },
+  { name: "centre dome", d: 55,   wf: 9,   wb: 10, pts: [[650,330],[750,290],[820,252],[850,235],[900,214],[950,198],[1000,186],[1050,176],[1100,171],[1150,169],[1200,171],[1250,173],[1300,179],[1350,183],[1400,190],[1450,196],[1550,215],[1650,240]] },
+  { name: "back-right",  d: 80,   wf: 8,   wb: 10, pts: [[1250,215],[1350,200],[1450,196],[1500,195],[1550,196],[1600,198],[1650,199],[1700,196],[1800,200],[1900,210]] },
+  { name: "far-right",   d: 95,   wf: 12,  wb: 14, pts: [[1550,215],[1650,200],[1700,194],[1750,180],[1800,171],[1850,164],[1900,159],[1950,156],[2000,154],[2300,148]] },
+  { name: "left-middle", d: 36,   wf: 10,  wb: 8,  pts: [[-300,214],[0,218],[100,222],[150,226],[200,237],[250,248],[300,254],[350,255],[400,252],[450,256],[500,258],[550,264],[600,271],[650,270],[700,271],[750,275],[800,284],[850,291],[900,300],[950,307],[1000,325],[1050,350],[1100,380]] },
+  { name: "right-big",   d: 28,   wf: 6,   wb: 7,  pts: [[950,330],[1000,305],[1050,281],[1100,261],[1150,245],[1200,231],[1250,216],[1300,205],[1400,203],[1500,206],[1600,207],[1700,210],[1800,210],[1850,203],[1900,204],[1950,210],[2000,215],[2300,225]] },
+  { name: "left-front",  d: 12.8, wf: 2.2, wb: 3,  pts: [[-300,345],[0,348],[50,344],[100,351],[200,350],[300,355],[400,367],[500,377],[600,380],[700,394],[800,410],[900,430]] },
+  { name: "right-front", d: 9.9,  wf: 1.6, wb: 2.4, pts: [[1150,470],[1200,440],[1250,412],[1300,392],[1400,384],[1500,387],[1600,386],[1700,386],[1800,388],[1900,391],[2000,390],[2300,392]] },
+];
+// Lavender drifts in the valley floor around her, traced in screen space:
+// (screen x, depth m, radius in banner px) -> converted to world below
+const PATH_PX = [[760, 19, 110], [870, 17, 110], [980, 15.6, 100], [1090, 14.6, 90], [1250, 15.6, 120], [1390, 15.2, 80], [1180, 13.6, 90]];
+// shorter grass between her and the camera, so her chair shows like in the banner (screen x, depth, radius px)
+const CLEAR_PX = [[1170, 15.5, 150], [1160, 13, 150], [1150, 11, 150], [1140, 9, 140], [1130, 7.5, 140]];
+function clearing(x, d) {
+  let c = 0;
+  for (const [sx, pd, rp] of CLEAR_PX) {
+    const px = (sx - CX0) * pd / F0, pr = rp * pd / F0, dx = x - px, dd = (d - pd) * 0.5;
+    c = Math.max(c, Math.exp(-(dx * dx + dd * dd) / (pr * pr)));
+  }
+  return c;
+}
+const GIRL = { xs: 1170, d: 15.5, hPx: 175, imgW: 445, imgH: 345 };
+
+// Palette sampled from the banner
+// Every colour is editable in the Colours panel. Each maps to one shader uniform.
+const PAL_DEFAULT = {
+  sky: "#ffffff", root: "#1a662e", lower: "#397442", midBlade: "#2d4929", shade: "#223a21", sunlit: "#767e4a",
+  tipGreen: "#43a344", straw: "#c4a99f", lav: "#b28e9e", lavBright: "#cea8b6", base: "#163c1f", dark: "#3a643f",
+  wood: "#c76d29", plastic: "#d9cbb1", fabric: "#bb7847",
+};
+const PAL_INFO = [
+  ["sky", "Background", "uSky"], ["root", "Blade root", "uRoot"], ["lower", "Lower blade", "uLower"],
+  ["midBlade", "Mid blade", "uMidB"], ["shade", "Tip in shade", "uShade"], ["sunlit", "Tip in sun", "uSunlit"],
+  ["tipGreen", "Tip highlight", "uTipG"], ["straw", "Crest rim", "uStraw"], ["lav", "Lavender", "uLav"],
+  ["lavBright", "Lavender in sun", "uLavB"], ["base", "Ground in shade", "uBase"], ["dark", "Ground in sun", "uDark"],
+  ["wood", "Desk wood", "uWood"], ["plastic", "Computer", "uPlastic"],
+];
+const PAL = { ...PAL_DEFAULT };
+
+const hiddenLayers = new Set();
+// Her tuned panel (grass-hills, 2026-11-18): Scene, Hero 16:9, Rounded mounds.
+const DEFAULTS = { background: 80, deskX: 2, deskDepth: -1.05, radius: 31, view: 0, frame: 1, depth: 1.5, haze: 0.89, overall: 1.11, len: 0.67, density: 1, base: 0.5, lav: 1, wind: 1, gust: 1, subject: 1, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: -0.35, gsize: 1.82, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
+// people who ask their system for less motion get a gentle breeze by default
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (REDUCED) DEFAULTS.wind = 0.35;
+const P = { ...DEFAULTS };
+
+// ---------------------------------------------------------------------------
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function interp(pts, x) {
+  if (x <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; const t = (x - x0) / (x1 - x0);
+    const s = t * t * (3 - 2 * t); return y0 + (y1 - y0) * (0.35 * t + 0.65 * s);
+  }
+  return pts[pts.length - 1][1];
+}
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// ---------------------------------------------------------------------------
+// Height map over x in [-62, 62] m and log-depth in [6, 150] m
+const HM = { w: 1024, h: 384, x0: -62, x1: 62, d0: 6, d1: 150 };
+HM.ld0 = Math.log(HM.d0); HM.ld1 = Math.log(HM.d1);
+// Valleys between the hills sit VALLEY m below her ground; the hills rise out of them, so each
+// nearer crest hides the foot of the hill behind it (as in the banner). Her path stays at 0.
+const VALLEY = 0.5;
+function pathMask(x, d) {
+  let m = 0;
+  for (const [sx, pd, rp] of PATH_PX) {
+    if (pd < 14.5) continue;                       // keep the ground in front of her low, as in the banner
+    const px = (sx - CX0) * pd / F0, pr = 1.9 * rp * pd / F0, dx = x - px, dd = (d - pd) * (d < pd ? 0.75 : 0.4);
+    m = Math.max(m, Math.exp(-(dx * dx + dd * dd) / (pr * pr)));
+  }
+  return m;
+}
+// Uniform rounded mounds (like the soft-hills reference): domes on a staggered grid with a
+// little jitter, overlapping so they read as one connected rolling field. Humps sets how many
+// sit across the frame at her distance; width sets how fat each one is; height is Hill height. Near the camera the land drops away so
+// you look across the mounds; far ones rise a little to form the skyline.
+// The distant mounds she circled on the skyline are left out: every mound beyond minD metres whose
+// centre lands in that column range (banner px), so no smaller mound shows through behind it.
+// Left edge, the centre dip (plus the pale far sliver her pen line points at), right edge.
+const HIDE_FAR = [[-700, 250, 50], [780, 1090, 62], [1790, 2700, 50]];
+function hash2(i, j) { let h = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function moundsH(x, d) {
+  const Sx = (W0 * GIRL.d / F0) / P.humps, Sd = 0.88 * Sx, R = 0.64 * P.hillW, r0 = Math.floor(d / Sd);
+  let acc = 0;
+  for (let r = r0 - 1; r <= r0 + 1; r++) {
+    const off = (r & 1) ? 0.5 * Sx : 0, c0 = Math.floor((x - off) / Sx);
+    for (let c = c0 - 1; c <= c0 + 1; c++) {
+      const xc = (c + 0.5) * Sx + off + (hash2(r, c) - 0.5) * 0.22 * Sx;
+      const dc = (r + 0.5) * Sd + (hash2(c + 91, r - 37) - 0.5) * 0.22 * Sd;
+      if (dc > GIRL.d && P.background < 100 && hash2(r + 371, c - 83) >= P.background / 100) continue;
+      if (dc > GIRL.d) { const xs = CX0 + xc * F0 / dc; if (HIDE_FAR.some(([a, b, minD]) => dc > minD && xs >= a && xs <= b)) continue; }
+      const q = ((x - xc) / (R * Sx)) ** 2 + ((d - dc) / (R * Sd)) ** 2;
+      if (q < 1) acc += ((0.9 + 0.2 * hash2(r * 7 + 3, c * 5 - 11)) * (1 - q) * (1 - q)) ** 4;
+    }
+  }
+  // her seat: a mound centred under the desk and chair
+  const gx = (GIRL.xs - CX0) * GIRL.d / F0;
+  const qg = ((x - gx) / (1.05 * R * Sx)) ** 2 + ((d - GIRL.d) / (1.05 * R * Sd)) ** 2;
+  if (qg < 1) acc += (1.02 * (1 - qg) * (1 - qg)) ** 4;
+  return acc ** 0.25;
+}
+// Valley: one long grassy rise seen side-on, like a hero banner. Its crest runs across the frame at
+// her distance, dips into a shallow valley under the desk and climbs gently toward both edges (more
+// slowly to the left). The land falls away steeply behind the crest, so only white sky shows.
+function valleyH(x, d) {
+  const gx = (GIRL.xs - CX0) * GIRL.d / F0, u = x - gx;
+  const t = u / ((u < 0 ? 6 : 4.1) * P.hillW);
+  const crest = 0.45 + t * t / (1 + 0.3 * t * t) + 0.05 * Math.sin(x * 0.7 + 1.1) * Math.min(1, Math.abs(t));
+  const dc = GIRL.d + 0.9 * Math.sin(x * 0.11 + 0.6) * Math.min(1, Math.abs(t));   // the ridge line wanders a little in depth
+  const v = d - dc;
+  const fall = v < 0 ? 0.02 * v * v : 0.3 * v * v;                                   // gentle face toward us, steep back
+  return crest - fall + 0.025 * Math.sin(x * 0.45 + d * 0.21) * Math.sin(d * 0.37 - x * 0.13);
+}
+function terrainH(x, d) {
+  if (P.hills === 2) return valleyH(x, d);
+  if (P.hills === 0) {
+    // rounded domes about 1:4 high:wide; valleys drop below the frame near the camera
+    const far = smoothstep(8, 60, d);
+    // fewer, bigger humps grow taller so they keep their rounded shape
+    const k = Math.min(1.6, Math.max(0.7, Math.sqrt((W0 * GIRL.d / F0) / P.humps / 6.75)));
+    const base = (-1.7 + 0.8 * far) * k, amp = (1.6 + 0.4 * far) * k;
+    return base + amp * moundsH(x, d) + 0.03 * Math.sin(x * 0.45 + d * 0.21) * Math.sin(d * 0.37 - x * 0.13);
+  }
+  // soft union of the traced hills: a 3.5-norm of heights above the valley floor
+  let acc = 0;
+  for (const L of LAYERS) {
+    if (hiddenLayers.has(L.name)) continue;
+    const xs = CX0 + x * F0 / L.d;
+    const ys = interp(L.pts, xs);
+    const crest = HC + (HY - ys) * L.d / F0 - TIP0;
+    const u = d - L.d, w = (u < 0 ? L.wf : L.wb) * 1.35 * P.hillW;   // wider: neighbouring hills flow into each other
+    const v = Math.max(0, crest + VALLEY) * Math.exp(-(u * u) / (w * w));
+    acc += v ** 3.5;
+  }
+  let H = acc ** (1 / 3.5) - VALLEY;
+  // her path is a gentle saddle, not a walled plateau: blend smoothly instead of max()
+  const pm = pathMask(x, d), floor = -VALLEY * (1 - pm);
+  const k = 0.5, hh = Math.max(k - Math.abs(H - floor), 0) / k;
+  H = Math.max(H, floor) + hh * hh * k * 0.25;
+  // the land between the traced hills rolls too, so nothing reads as a separate block
+  const roll = 0.3 * Math.sin(x * 0.16 + d * 0.07 + 1.3) * Math.sin(d * 0.11 - x * 0.05) + 0.16 * Math.sin(x * 0.29 - d * 0.15 + 0.4);
+  H += roll * (1 - 0.85 * pm) + 0.04 * Math.sin(x * 0.45 + d * 0.21) * Math.sin(d * 0.37 - x * 0.13);
+  return H;
+}
+function buildHeightmap() {
+  const { w, h } = HM, H = new Float32Array(w * h), lav = new Float32Array(w * h);
+  for (let j = 0; j < h; j++) {
+    const d = Math.exp(HM.ld0 + (HM.ld1 - HM.ld0) * (j + 0.5) / h);
+    for (let i = 0; i < w; i++) {
+      const x = HM.x0 + (HM.x1 - HM.x0) * (i + 0.5) / w;
+      H[j * w + i] = terrainH(x, d);
+      let l = 0;
+      if (P.hills !== 2) for (const [sx, pd, rp] of PATH_PX) {
+        const px = (sx - CX0) * pd / F0, pr = rp * pd / F0;
+        const dx = x - px, dd = (d - pd) * 0.45;
+        l = Math.max(l, Math.exp(-(dx * dx + dd * dd) / (pr * pr)));
+      }
+      lav[j * w + i] = l;
+    }
+  }
+  // cavity = height minus a ~5 m neighbourhood mean (prefix sums, variable radius in depth)
+  const blurX = new Float32Array(w * h), out = new Float32Array(w * h * 4);
+  const rx = Math.round(5 / ((HM.x1 - HM.x0) / w));
+  for (let j = 0; j < h; j++) {
+    let acc = 0; const row = j * w; const pre = new Float32Array(w + 1);
+    for (let i = 0; i < w; i++) { acc += H[row + i]; pre[i + 1] = acc; }
+    for (let i = 0; i < w; i++) { const a = Math.max(0, i - rx), b = Math.min(w, i + rx + 1); blurX[row + i] = (pre[b] - pre[a]) / (b - a); }
+  }
+  const dlog = (HM.ld1 - HM.ld0) / h;
+  for (let i = 0; i < w; i++) {
+    const pre = new Float32Array(h + 1); let acc = 0;
+    for (let j = 0; j < h; j++) { acc += blurX[j * w + i]; pre[j + 1] = acc; }
+    for (let j = 0; j < h; j++) {
+      const d = Math.exp(HM.ld0 + dlog * (j + 0.5));
+      const rd = Math.max(2, Math.min(80, Math.round(5 / (d * dlog))));
+      const a = Math.max(0, j - rd), b = Math.min(h, j + rd + 1);
+      const k = (j * w + i);
+      out[k * 4] = H[k];
+      out[k * 4 + 1] = H[k] - (pre[b] - pre[a]) / (b - a);
+      out[k * 4 + 2] = lav[k];
+      out[k * 4 + 3] = 0;
+    }
+  }
+  // light: a low sun behind the hills (10 deg up, a little from the left) skims the crests;
+  // the faces turned to us fall into their own crest's shadow, deeper toward the foot.
+  HM.H = H;
+  computeLight(out);
+  // slope texture: dH/dx and dH/dd in world units (one fetch in the shaders)
+  const grad = new Float32Array(w * h * 2), dx = (HM.x1 - HM.x0) / w;
+  for (let j = 0; j < h; j++) {
+    const ja = Math.max(0, j - 1), jb = Math.min(h - 1, j + 1);
+    const da = Math.exp(HM.ld0 + dlog * (ja + 0.5)), db = Math.exp(HM.ld0 + dlog * (jb + 0.5));
+    for (let i = 0; i < w; i++) {
+      const ia = Math.max(0, i - 1), ib = Math.min(w - 1, i + 1);
+      grad[(j * w + i) * 2] = (H[j * w + ib] - H[j * w + ia]) / ((ib - ia) * dx);
+      grad[(j * w + i) * 2 + 1] = (H[jb * w + i] - H[ja * w + i]) / (db - da);
+    }
+  }
+  HM.grad = grad;
+  return out;
+}
+
+const SUN_ELEV = 5 * Math.PI / 180, SUN_SIDE = -0.22, SHADOW_SOFT = 0.45;
+function computeLight(out) {
+  const { w, h } = HM, H = HM.H, dlog = (HM.ld1 - HM.ld0) / h, dxm = (HM.x1 - HM.x0) / w;
+  const tanE = Math.tan(SUN_ELEV), step = 2, D = P.depth;
+  for (let j = 0; j < h; j += step) {
+    const d = Math.exp(HM.ld0 + dlog * (j + 0.5));
+    for (let i = 0; i < w; i += step) {
+      const h0 = H[j * w + i] * D;
+      let depth = 0, sky = 0;
+      for (let k = 1; k <= 30; k++) {
+        const dist = 0.35 * k + 0.045 * k * k;                       // up to ~51 m toward the sun
+        const jj = Math.round((Math.log(d + dist) - HM.ld0) / dlog - 0.5);
+        const ii = Math.round(i + SUN_SIDE * dist / dxm);
+        if (jj >= h || ii < 0 || ii >= w) break;
+        const rise = H[jj * w + ii] * D - h0;
+        depth = Math.max(depth, rise - tanE * dist);
+        sky = Math.max(sky, rise / dist);
+      }
+      const sun = Math.exp(-depth / SHADOW_SOFT);
+      const open = 1 - sky / Math.sqrt(1 + sky * sky);
+      const L = 0.78 * sun + 0.22 * open;
+      for (let b = 0; b < step; b++) for (let a = 0; a < step; a++) {
+        const jj = Math.min(h - 1, j + b), ii = Math.min(w - 1, i + a);
+        out[(jj * w + ii) * 4 + 3] = L;
+      }
+    }
+  }
+}
+let lightTimer = 0;
+function scheduleLight() {
+  clearTimeout(lightTimer);
+  lightTimer = setTimeout(() => {
+    computeLight(hmData);
+    sampleSiteLight();
+    gl.bindTexture(gl.TEXTURE_2D, hmTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, HM.w, HM.h, 0, gl.RGBA, gl.FLOAT, hmData);
+    packBlades();
+  }, 120);
+}
+
+// Blades: depth log-uniform so screen density stays even; sorted near -> far
+const N_MAX = 380000;
+let bladesValley = false;          // which blade set is built: the valley's (near slope only) or the hills'
+function buildBlades() {
+  bladesValley = P.hills === 2;
+  const N = bladesValley ? 260000 : N_MAX;
+  const r = rng(20261117), dmin = bladesValley ? 6.4 : 7.6, dmax = bladesValley ? 26 : 140;
+  const tmp = new Float32Array(N * 10), order = new Uint32Array(N), depth = new Float32Array(N);
+  for (let n = 0; n < N; n++) {
+    const q = Math.sqrt(dmin) + r() * (Math.sqrt(dmax) - Math.sqrt(dmin)), d = q * q;   // pdf ~ d^-0.5
+    const xs = -180 + 2360 * r();
+    const x = (xs - CX0) * d / F0;
+    const o = n * 10;
+    tmp[o] = x; tmp[o + 1] = d;
+    tmp[o + 2] = 0.6 + 0.26 * r();                     // height (m)
+    tmp[o + 3] = 0.016 + 0.012 * r();                  // width (m)
+    tmp[o + 4] = (r() - 0.5) * 2.4;                    // lean yaw around downwind
+    tmp[o + 5] = r();                                  // seed
+    tmp[o + 6] = 0.04 + 0.3 * Math.pow(r(), 1.5);      // rest bend (rad)
+    tmp[o + 7] = r();                                  // stiffness
+    tmp[o + 8] = r(); tmp[o + 9] = r();
+    order[n] = n; depth[n] = d;
+  }
+  order.sort((a, b) => depth[a] - depth[b]);
+  const out = new Float32Array(N * 10);
+  for (let n = 0; n < N; n++) out.set(tmp.subarray(order[n] * 10, order[n] * 10 + 10), n * 10);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, preserveDrawingBuffer: true });   // MSAA happens in the scene buffer
+if (!gl) throw new Error("WebGL2 is not available in this browser");   // the page stays plain white
+
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(src.split("\n").map((l, i) => (i + 1) + ": " + l).join("\n")); throw new Error(gl.getShaderInfoLog(s)); } return s; }
+function program(vs, fs) { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); const name = info.name.replace(/\[0\]$/, ""); u[name] = gl.getUniformLocation(p, info.name); } return { p, u }; }
+
+const NOISE = `
+  float h21(vec2 p){ uvec2 q = uvec2(ivec2(floor(p)) + 32768); uint h = q.x * 1597334677u ^ q.y * 3812015801u; h = (h ^ (h >> 16)) * 2246822519u; h ^= h >> 13; return float(h) * (1.0 / 4294967295.0); }
+  float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3. - 2. * f);
+    return mix(mix(h21(i), h21(i + vec2(1, 0)), u.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), u.x), u.y); }
+  float fbm(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 4; i++){ s += a * vnoise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 11.7; a *= .5; } return s / .9375; }
+`;
+
+// Shared terrain sampling + lighting (vertex stage)
+const TERRAIN = `
+  uniform sampler2D uHM;
+  uniform vec4 uDom;          // x0, x1, ld0, ld1
+  uniform float uDepth;
+  vec2 domUV(float x, float d){ return vec2((x - uDom.x) / (uDom.y - uDom.x), (log(d) - uDom.z) / (uDom.w - uDom.z)); }
+  vec4 hm(float x, float d){ return texture(uHM, domUV(x, d)); }
+  uniform sampler2D uGR;      // dH/dx, dH/dd
+  vec2 tgrad(float x, float d){ return texture(uGR, domUV(x, d)).rg * uDepth; }
+  // world normal (x right, y up, z toward camera) of the scaled terrain
+  vec3 tnormal(vec2 gr){ return normalize(vec3(-gr.x, 1., gr.y)); }
+
+`;
+
+const LIGHT = `
+  uniform vec3 uSky, uBase, uDark, uTipG, uStraw, uLav, uLavB;
+  uniform vec3 uRoot, uLower, uMidB, uShade, uSunlit;   // the blade ramp, root to tip
+  uniform float uHaze, uBaseAmt, uOverall;
+  const vec3 SUN = normalize(vec3(-.2, .35, -.9));      // low light from behind the hills: slopes facing us sit in shade
+  // light = baked low back-sun (crest lit, faces shaded toward the foot) + a little open sky
+  float litness(vec3 n, float cav, float light){
+    float ndl = max(dot(n, SUN), 0.);
+    return clamp(-.12 + .85 * light + .4 * ndl + .2 * cav, 0., 1.);
+  }
+  // haze builds with distance like the banner: near hills stay deep, far ridges lift toward the sky
+  vec3 fogged(vec3 c, float d){ float f = 1. - exp(-max(d - 14., 0.) * uHaze / 125.); return mix(c, uSky, f * .85); }
+`;
+
+const TONE = `
+  uniform float uTin[9];
+  uniform float uTout[9];
+  // histogram match: remap luminance onto the banner's measured grass distribution
+  vec3 toneMatch(vec3 c){
+    float y = dot(c, vec3(.2126, .7152, .0722));
+    float o = y * uTout[0] / max(uTin[0], 1e-4);
+    for (int k = 0; k < 8; k++){
+      if (y > uTin[k]) o = mix(uTout[k], uTout[k + 1], clamp((y - uTin[k]) / max(uTin[k + 1] - uTin[k], 1e-4), 0., 1.));
+    }
+    c *= o / max(y, 1e-4);
+    // chroma-only shift toward the banner's measured bands (its greens are warmer, less blue)
+    vec3 gD = vec3(.74, .96, .82), gM = vec3(1.07, 1.03, .85), gH = vec3(1.03, 1.0, .96);
+    vec3 g = mix(mix(gD, gM, smoothstep(.12, .4, o)), gH, smoothstep(.55, .75, o));
+    g /= dot(g, vec3(.2126, .7152, .0722));
+    return c * g;
+  }
+`;
+
+// --- blades ---------------------------------------------------------------
+const bladeVS = `#version 300 es
+  precision highp float;
+  layout(location = 0) in vec2 aV;      // t along blade, side (-1..1)
+  layout(location = 1) in vec2 aRoot;   // world x, depth
+  layout(location = 2) in vec4 aP;      // height, width, yaw, seed
+  layout(location = 3) in vec4 aQ;      // rest bend, stiffness, r1, r2
+  layout(location = 4) in vec4 aT;      // ground height, cavity, lavender path, baked light (CPU, per blade)
+  layout(location = 5) in vec4 aO;      // slope dH/dx, dH/dd, px above its slope's foot, px below its slope's silhouette
+  layout(location = 6) in vec2 aC;      // clearing (short grass), spare
+  uniform sampler2D uBrush;
+  uniform mat4 uPV;
+  uniform vec3 uCam;
+  uniform float uTime, uLen, uDensity, uWind, uGust, uLavAmt, uFpx, uSoftSh;
+  uniform sampler2D uWindTex;
+  uniform int uDbg;
+  out vec3 vCol;
+  out float vD;
+  ${TERRAIN}
+  ${NOISE}
+  ${LIGHT}
+  ${SET_GLSL}
+  void main(){
+    float seed = aP.w;
+    if (fract(seed * 7.31 + aQ.z * .37) > uDensity) { gl_Position = vec4(2., 2., 2., 1.); vCol = vec3(0.); vD = 1.; return; }
+    float x = aRoot.x, d = aRoot.y;
+    float H = aT.x * uDepth, cav = aT.y * uDepth, path = aT.z, light = aT.w;
+    // blade type: lavender scattered over every hill in small loose patches (not bunched in one
+    // spot), a little more on crests where the tips show; a few pale seed stalks
+    float crest = smoothstep(.02, .35, cav);
+    float lavPatch = smoothstep(.42, .78, vnoise(vec2(x * .5, d * .38)));
+    float pLav = uLavAmt * (.012 + .07 * lavPatch) * (1. + .6 * crest);
+    float isLav = step(fract(seed * 13.17), pLav);
+    float isSeed = (1. - isLav) * step(fract(seed * 29.3), .015 * crest);
+    float h = aP.x * uLen * (1. + .06 * isSeed) * (1. - .62 * aC.x);   // shorter in the clearing around her
+    float t = aV.x;
+    // rim: tips within a band below the silhouette of the slope they stand on (fuzzy: not every blade)
+    float band = clamp(700. / d, 6., 30.);
+    float peek = (1. - smoothstep(0., band, aO.w)) * step(fract(seed * 5.71), .7);
+    float gap = aO.z;
+    vec2 gr = aO.xy * uDepth;
+    vec3 n = tnormal(gr);
+    vec3 root = vec3(x, H - .03, -d);
+    if (setSolid(root)) { gl_Position = vec4(2., 2., 2., 1.); vCol = vec3(0.); vD = 1.; return; }
+
+    // wind: travelling gust bands + per-blade spring (overshoot from the lagged field)
+    vec4 Wt = texture(uWindTex, domUV(x, d));
+    float g = Wt.r, gLag = Wt.g;
+    float stiff = aQ.y;
+    float omega = (1.5 + 1.6 * stiff) * sqrt(.5 / h);
+    float sway = sin(uTime * omega + seed * 6.283 + x * .35 - d * .11);
+    float bend = aQ.x
+      + uWind * ((.16 + .8 * g) * (1.05 - .5 * stiff) + .55 * (g - gLag) * (1. - .4 * stiff))
+      + uWind * (.06 + .16 * g) * sway;
+    vec3 wdir = normalize(vec3(1., 0., .18));
+    float yaw = aP.z;
+    vec3 lean = vec3(cos(yaw) * wdir.x - sin(yaw) * wdir.z, 0., sin(yaw) * wdir.x + cos(yaw) * wdir.z);
+    vec3 bdir = normalize(mix(lean, wdir, clamp(.3 + uWind * (.25 + .6 * g), 0., 1.)));
+
+    vec3 up = vec3(0., 1., 0.);
+    vec4 sampleClip = uPV * vec4(root + vec3(0.,h*.45,0.),1.);
+    vec2 brushUV = sampleClip.xy/sampleClip.w*.5+.5;
+    vec2 push = (texture(uBrush,brushUV).rg*255.-128.)*.01;
+    if(dot(push,push)>.00001) {
+      vec2 combined = bdir.xz*bend + vec2(push.x,-push.y)*.98/(.8+.35*stiff);
+      float amount = length(combined);
+      if(amount>.0001) bdir=vec3(combined.x,0.,combined.y)/amount;
+      bend=min(1.65,amount);
+    }
+    float b = bend * t;
+    vec3 p = root + up * (h * t * (1. - .2 * b * b)) + bdir * (h * bend * t * t * .8);
+    vec3 toCam = normalize(uCam - root);
+    vec3 sideB = normalize(cross(up, bdir));
+    vec3 sideC = normalize(cross(up, toCam));
+    vec3 side = normalize(mix(sideB, sideC, .65));
+    // seed heads and lavender flutter at the tip
+    p += side * h * (.035 + .05 * isLav) * (isLav + isSeed) * sin(uTime * (7. + 4. * aQ.w) + seed * 40.) * t * t * t * uWind * (.4 + g);
+
+    // width: tapered leaf; lavender/seed = thin stem with a feathery head
+    float wmin = .75 * d / uFpx;
+    float w = aP.y * pow(1. - t, .7);
+    float head = smoothstep(.66, .82, t) * (1. - smoothstep(.95, 1., t));
+    w = mix(w, aP.y * (.3 + .85 * head), isLav + isSeed);
+    w = max(w, wmin * (1. - t * .6));
+    p += side * aV.y * w * .5;
+
+    gl_Position = uPV * vec4(p, 1.);
+
+    // colour: green bodies, slightly olive tips; beige-pink / lavender only where tips are seen across a crest
+    // each slope is darkest where the next nearer hill overlaps it, lighter up toward its own crest
+    float sao = pow(smoothstep(0., clamp(3200. / d, 30., 150.), gap), .8);
+    float lt = pow(clamp(litness(n, cav, light) * (.3 + .7 * sao) + .05 * sao - .08, 0., 1.), 1.45);
+    float sS = setShadow(p), sU = setUnder(p);     // the desk set's shadow and the shelter under it
+    lt *= 1. - mix(.8, .6, uSoftSh) * sS;         // softer in the valley: long low-sun shadows run down the open slope
+    float low = 1. - smoothstep(0., .75, t);
+    // banner ramp along every blade: #1a662e root -> #397442 -> #2d4929 -> tip #596f39..#767e4a in light
+    vec3 top = mix(uShade, uSunlit, lt);
+    top *= .82 + .36 * aQ.z;
+    top = mix(top, top * vec3(1.08, 1.06, .84), aQ.w * lt);
+    vec3 c = mix(uRoot, uLower, smoothstep(0., .35, t));
+    c = mix(c, mix(uMidB, top, .55), smoothstep(.3, .7, t));
+    c = mix(c, top, smoothstep(.62, 1., t));
+    c += lt * (.5 + aQ.z) * .05 * smoothstep(.3, .6, t) * (1. - smoothstep(.75, 1., t)) * vec3(.8, 1., .55);
+    c = mix(c, uTipG, smoothstep(.85, 1., t) * (.05 + .2 * lt));
+    vec3 rimC = mix(mix(uTipG, uStraw, .6), uLavB, .12 + .3 * smoothstep(20., 70., d));
+    vec3 headC = isLav > .5 ? mix(uLav, uLavB, .35 * lt) : mix(uTipG, uStraw, .6);
+    c = mix(c, headC, (isLav + isSeed) * smoothstep(.62, .8, t));
+    c = mix(c, isLav > .5 ? headC : rimC, peek * smoothstep(.35, .9, t) * .85);
+    // light: warm where the low sun reaches, cool green in shade
+    c *= mix(vec3(.93, .99, 1.07), vec3(1.07, 1.02, .87), lt);
+    // backlit blades glow through (sun behind the hills, like the pink muhly reference)
+    float sunVis = smoothstep(.3, .85, light) * (1. - sS);
+    c += vec3(.17, .19, .05) * sunVis * t * t * (.35 + .65 * lt) * .6;
+    // silky sheen rolling over the curved slopes
+    vec3 vdir = normalize(uCam - p);
+    float sh = pow(max(dot(n, normalize(normalize(vec3(-.55, .55, -.35)) + vdir)), 0.), 16.);
+    c += vec3(.09, .11, .05) * sh * smoothstep(.4, 1., t) * (1. - sS);
+    // base occlusion inside the canopy, deeper in valleys
+    c *= 1. - uBaseAmt * (.6 * low);
+    c *= (1. - .5 * sU) * (1. - mix(.4, .25, uSoftSh) * sS);
+    // gust sheen: bowed blades show paler sides (barley clip)
+    float y = dot(c, vec3(.2126, .7152, .0722));
+    c = mix(c, vec3(y) * vec3(1.02, 1.02, .98) + .05, .22 * g * uWind * t);
+    vCol = fogged(c * uOverall, d);
+    vD = d;
+    if (uDbg == 1) vCol = vec3(peek, sao, isLav) * (.4 + .6 * t);
+    if (uDbg == 2) vCol = vec3(path, crest, pLav * 3.);
+    if (uDbg == 3) vCol = vec3(lt, sao, peek);
+  }`;
+const bladeFS = `#version 300 es
+  precision highp float;
+  in vec3 vCol; in float vD; out vec4 o;
+  uniform int uRaw;
+  ${TONE}
+  float depthCode(float d){ return clamp(log(d / 4.) / log(60.), 0., .99); }
+  void main(){ o = vec4(uRaw == 1 ? vCol : toneMatch(vCol), depthCode(vD)); }`;
+
+// --- terrain ground ---------------------------------------------------------
+const groundVS = `#version 300 es
+  precision highp float;
+  layout(location = 0) in vec2 aUV;
+  uniform mat4 uPV;
+  out vec3 vCol; out float vH; out vec2 vW;
+  ${TERRAIN}
+  ${LIGHT}
+  void main(){
+    float x = mix(uDom.x, uDom.y, aUV.x);
+    float d = exp(mix(uDom.z, uDom.w, aUV.y));
+    vec4 T = hm(x, d);
+    float H = T.r * uDepth;
+    vec3 n = tnormal(tgrad(x, d));
+    float lt = litness(n, T.g * uDepth, T.a);
+    vec3 c = mix(uBase, uDark, lt) * (1. - .35 * uBaseAmt);
+    vCol = fogged(c * uOverall, d);
+    vH = T.r; vW = vec2(x, d);
+    gl_Position = uPV * vec4(x, H, -d, 1.);
+  }`;
+const groundFS = `#version 300 es
+  precision highp float;
+  in vec3 vCol; in float vH; in vec2 vW;
+  uniform int uView, uRaw;
+  uniform vec3 uSky;
+  out vec4 o;
+  ${TONE}
+  float depthCode(float d){ return clamp(log(d / 4.) / log(60.), 0., .99); }
+  void main(){
+    if (uView == 1){
+      float hn = clamp(vH / 5.5, 0., 1.);
+      vec3 c = mix(vec3(.13, .22, .12), vec3(.78, .74, .62), hn);
+      float lv = vH * 4. + .5;            // a contour every 25 cm
+      float fw = fwidth(lv);
+      float line = 1. - smoothstep(0., 1.2, min(fract(lv), 1. - fract(lv)) / max(fw, 1e-4));
+      float major = 1. - smoothstep(0., 1.4, min(fract(lv / 4.), 1. - fract(lv / 4.)) * 4. / max(fw, 1e-4));
+      c = mix(c, vec3(.06, .08, .05), .5 * line + .35 * major);
+      float f = 1. - exp(-vW.y / 400.);
+      o = vec4(mix(c, uSky, f), 1.);
+      return;
+    }
+    o = vec4(uRaw == 1 ? vCol : toneMatch(vCol), depthCode(vW.y));
+  }`;
+
+// --- her (cut-out billboard) ------------------------------------------------
+const windVS = `#version 300 es
+  layout(location = 0) in vec2 aP; out vec2 vUV; void main(){ vUV = aP * .5 + .5; gl_Position = vec4(aP, 0., 1.); }`;
+const windFS = `#version 300 es
+  precision highp float;
+  in vec2 vUV; uniform vec4 uDom; uniform float uTime, uGust, uWindX, uWindSp; out vec4 o;
+  ${NOISE}
+  float gust(vec2 p, float t, float run){
+    // run = metres the air has travelled (Seattle's live wind speed, integrated); bands roll left -> right
+    vec2 q = vec2((p.x - run) / 7.5 + .12 * p.y / 9., p.y / 24.);
+    float n = fbm(q + vec2(0., t * .04));
+    return smoothstep(.44 - .08 * uGust, .82, n) * min(uGust, 1.);
+  }
+  void main(){
+    float x = mix(uDom.x, uDom.y, vUV.x), d = exp(mix(uDom.z, uDom.w, vUV.y));
+    o = vec4(gust(vec2(x, d), uTime, uWindX), gust(vec2(x, d), uTime - .45, uWindX - uWindSp * .45), 0., 1.);
+  }`;
+
+const progBlade = program(bladeVS, bladeFS);
+const progGround = program(groundVS, groundFS);
+const progWind = program(windVS, windFS);
+const progDesk = program(deskVS(TERRAIN, LIGHT), deskFS(NOISE, LIGHT, TONE, TERRAIN));
+const crtTexture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, crtTexture);
+gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([206,177,131,255]));
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+const crtImage = new Image();
+crtImage.onload = () => {
+  gl.activeTexture(gl.TEXTURE6);
+  gl.bindTexture(gl.TEXTURE_2D,crtTexture);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,crtImage);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+};
+crtImage.src = "crt-face.jpg";
+
+
+// Finishing pass: depth of field focused on her, soft halation, a warm hazy sky with
+// faint distant ridges, and fine grain. Reads the resolved scene (alpha = depth code).
+const postFS = `#version 300 es
+  precision highp float;
+  in vec2 vUV; out vec4 o;
+  uniform sampler2D uScene;
+  uniform vec2 uTexel, uRes, uView;   // uView: banner column at the left edge, banner row at the top
+  uniform float uS, uTime, uFx, uDof, uHalo;
+  uniform vec3 uSky;
+  float depthOf(float a){ return 4. * exp(a * log(60.)); }
+  float coc(float a){ float d = depthOf(a); return min(abs(1. / d - 1. / ${GIRL.d.toFixed(1)}) * 62. * uS, 6. * uS) * uDof; }
+  void main(){
+    vec4 c0 = texture(uScene, vUV);
+    vec3 col = c0.rgb;
+    if (uFx < .5) { o = vec4(col, 1.); return; }
+    vec2 fc = gl_FragCoord.xy;
+    float bx = uView.x + fc.x / uS, by = uView.y + (uRes.y - fc.y) / uS;
+    bool sky = c0.a > .995;
+    if (sky) {
+      o = vec4(uSky, 1.);                       // plain background, untouched by grain or glow
+      return;
+    } else {
+      float r = coc(c0.a);
+      if (r > .7) {
+        vec3 acc = col; float wsum = 1.;
+        for (int i = 0; i < 12; i++) {
+          float a = float(i) * 2.3999632 + .7, rad = r * sqrt((float(i) + .5) / 12.);
+          vec2 off = vec2(cos(a), sin(a)) * rad;
+          vec4 sm = textureLod(uScene, vUV + off * uTexel, log2(max(r * .3, 1.)));
+          float w = sm.a > .995 ? .6 : clamp(coc(sm.a) - rad + 1., 0., 1.);
+          acc += sm.rgb * w; wsum += w;
+        }
+        col = acc / wsum;
+      }
+    }
+    vec3 halo = .55 * textureLod(uScene, vUV, 3.5).rgb + .45 * textureLod(uScene, vUV, 5.5).rgb;
+    col = mix(col, max(col, halo), .16 * uHalo);
+    if (!sky) col += max(halo - .6, 0.) * .3 * uHalo * vec3(1., .96, .88);   // highlight glow on the land only; the sky never clips
+    float n = fract(sin(dot(fc + fract(uTime) * 97., vec2(12.9898, 78.233))) * 43758.5453);
+    col += (n - .5) * 2.4 / 255.;
+    o = vec4(col, 1.);
+  }`;
+const progPost = program(windVS, postFS);
+const post = { w: 0, h: 0, fb: null, rb: null, rbD: null, fbR: null, tex: null };
+function ensurePost() {
+  if (post.w === W && post.h === H) return;
+  for (const k of ["rb", "rbD"]) if (post[k]) gl.deleteRenderbuffer(post[k]);
+  for (const k of ["fb", "fbR"]) if (post[k]) gl.deleteFramebuffer(post[k]);
+  if (post.tex) gl.deleteTexture(post.tex);
+  const samples = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+  post.rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, post.rb);
+  gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA8, W, H);
+  post.rbD = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, post.rbD);
+  gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, W, H);
+  post.fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, post.fb);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, post.rb);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, post.rbD);
+  post.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, post.tex);
+  gl.texStorage2D(gl.TEXTURE_2D, Math.floor(Math.log2(Math.max(W, H))) + 1, gl.RGBA8, W, H);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  post.fbR = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, post.fbR);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, post.tex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  post.w = W; post.h = H;
+}
+
+// ---------------------------------------------------------------------------
+// geometry
+const SEG = 6;
+const bladeVerts = [], bladeIdx = [];
+for (let i = 0; i < SEG; i++) { const t = i / SEG; bladeVerts.push(t, -1, t, 1); }
+bladeVerts.push(1, 0);
+for (let i = 0; i < SEG - 1; i++) { const a = i * 2; bladeIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+bladeIdx.push((SEG - 1) * 2, (SEG - 1) * 2 + 1, SEG * 2);
+
+const vaoBlade = gl.createVertexArray();
+gl.bindVertexArray(vaoBlade);
+const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bladeVerts), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(bladeIdx), gl.STATIC_DRAW);
+const instBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+const STRIDE = 20;
+gl.bufferData(gl.ARRAY_BUFFER, N_MAX * STRIDE * 4, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, STRIDE * 4, 0); gl.vertexAttribDivisor(1, 1);
+gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 4, gl.FLOAT, false, STRIDE * 4, 8); gl.vertexAttribDivisor(2, 1);
+gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 4, gl.FLOAT, false, STRIDE * 4, 24); gl.vertexAttribDivisor(3, 1);
+gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.FLOAT, false, STRIDE * 4, 40); gl.vertexAttribDivisor(4, 1);
+gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 4, gl.FLOAT, false, STRIDE * 4, 56); gl.vertexAttribDivisor(5, 1);
+gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 2, gl.FLOAT, false, STRIDE * 4, 72); gl.vertexAttribDivisor(6, 1);
+gl.bindVertexArray(null);
+
+// ground grid
+const GW = 200, GH = 120, gv = [], gi = [];
+for (let j = 0; j <= GH; j++) for (let i = 0; i <= GW; i++) gv.push(i / GW, j / GH);
+for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) { const a = j * (GW + 1) + i, b = a + GW + 1; gi.push(a, b, a + 1, a + 1, b, b + 1); }
+const vaoGround = gl.createVertexArray();
+gl.bindVertexArray(vaoGround);
+const gb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, gb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gv), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const gib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(gi), gl.STATIC_DRAW);
+gl.bindVertexArray(null);
+
+// desk setup: one mesh of rounded boxes (see desk.js)
+const deskSet = buildDeskSet();
+const vaoDesk = gl.createVertexArray();
+gl.bindVertexArray(vaoDesk);
+const db = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, db); gl.bufferData(gl.ARRAY_BUFFER, deskSet.data, gl.STATIC_DRAW);
+for (const [loc, size, off] of [[0, 3, 0], [1, 3, 3], [2, 3, 6], [3, 1, 9]]) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 40, off * 4); }
+const dib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, dib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, deskSet.index, gl.STATIC_DRAW);
+gl.bindVertexArray(null);
+const boxC = new Float32Array(deskSet.boxes.length * 4), boxH = new Float32Array(deskSet.boxes.length * 3);
+const boxPitch = Float32Array.from(deskSet.boxes, b => b.pitch);
+deskSet.boxes.forEach((b, i) => { boxC.set([...b.c, b.yaw], i * 4); boxH.set(b.h, i * 3); });
+
+const vaoQuad = gl.createVertexArray();
+gl.bindVertexArray(vaoQuad);
+const qb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, qb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+const vaoTri = gl.createVertexArray();
+gl.bindVertexArray(vaoTri);
+const tb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, tb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+
+// textures
+const hmTex = gl.createTexture();
+const grTex = gl.createTexture();
+const windTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, windTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 256, 128, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+const windFB = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, windFB);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, windTex, 0);
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+let hmData = null, girlGround = 0, siteLight = 1;
+// how much low sun reaches her spot (baked terrain light), for lighting the desk set
+function sampleSiteLight() {
+  if (!hmData) return;
+  const gx = (GIRL.xs - CX0) * GIRL.d / F0, dlog = (HM.ld1 - HM.ld0) / HM.h;
+  const i = Math.max(0, Math.min(HM.w - 1, Math.round((gx - HM.x0) / (HM.x1 - HM.x0) * HM.w - 0.5)));
+  const j = Math.max(0, Math.min(HM.h - 1, Math.round((Math.log(GIRL.d) - HM.ld0) / dlog - 0.5)));
+  siteLight = Math.min(1, Math.max(0.15, hmData[(j * HM.w + i) * 4 + 3] * 1.15));
+}
+// Occlusion horizon: for every screen column, march near -> far and record the
+// highest grass top seen so far. Rebuilt when length or depth change.
+const OC = { w: 1200, xs0: -240, xs1: 2240, tex: null, data: null };
+const TIP_OCC = 0.66;   // matches the mean blade top
+function buildOcclusion() {
+  const w = OC.w, h = HM.h, out = new Float32Array(w * h * 4), dlog = (HM.ld1 - HM.ld0) / h;
+  for (let i = 0; i < w; i++) {
+    const xs = OC.xs0 + (OC.xs1 - OC.xs0) * (i + 0.5) / w;
+    let occ = 1e4, occG = 1e4, foot = H0 + 40, wasHidden = true;
+    let runStart = -1, runTop = 1e4;
+    const closeRun = (jEnd) => { for (let k = runStart; k < jEnd; k++) out[(k * w + i) * 4 + 3] = runTop; };
+    for (let j = 0; j < h; j++) {
+      const d = Math.exp(HM.ld0 + dlog * (j + 0.5));
+      const o4 = (j * w + i) * 4;
+      out[o4] = occ;          // grass tops: anything below this is hidden
+      out[o4 + 1] = occG;     // bare ground: roots below this sit behind a crest
+      const x = (xs - CX0) * d / F0;
+      const gx = (x - HM.x0) / (HM.x1 - HM.x0) * HM.w - 0.5;
+      const i0 = Math.max(0, Math.min(HM.w - 2, Math.floor(gx))), f = Math.min(1, Math.max(0, gx - i0));
+      const Hh = (hmData[(j * HM.w + i0) * 4] * (1 - f) + hmData[(j * HM.w + i0 + 1) * 4] * f) * P.depth;
+      const top = Hh + TIP_OCC * P.len * (1 - 0.62 * Math.max(hmData[(j * HM.w + i0) * 4 + 2], clearing(x, d)));
+      const yt = HY - F0 * (top - HC) / d;          // grass-top row of this cell
+      const visible = yt < occ - 0.5;
+      if (visible && wasHidden) { foot = Math.min(occ, H0 + 40); if (runStart >= 0) closeRun(j); runStart = j; runTop = yt; }
+      if (visible) runTop = Math.min(runTop, yt);
+      out[o4 + 2] = foot;     // where the visible slope this point is on comes out from behind a nearer crest
+      out[o4 + 3] = 1e4;
+      wasHidden = !visible;
+      occ = Math.min(occ, yt);
+      occG = Math.min(occG, HY - F0 * (Hh - HC) / d);
+    }
+    if (runStart >= 0) closeRun(h);
+  }
+  // soften column-to-column jumps in the foot and silhouette rows (they read as vertical seams)
+  const R = 9, tmp = new Float32Array(w);
+  for (const ch of [2, 3]) for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) tmp[i] = out[(j * w + i) * 4 + ch];
+    for (let i = 0; i < w; i++) {
+      let sum = 0, n = 0;
+      for (let k = Math.max(0, i - R); k <= Math.min(w - 1, i + R); k++) { const v = tmp[k]; if (v < 9000) { sum += v; n++; } }
+      if (n) out[(j * w + i) * 4 + ch] = sum / n;
+    }
+  }
+  OC.data = out;
+}
+
+// Per-blade pass on the CPU: sample terrain, light and occlusion once per blade
+// (not once per vertex) and drop blades hidden behind nearer hills.
+let bladesBase = null, packed = null, bladeCount = 0;
+function packBlades() {
+  const { w, h } = HM, dlog = (HM.ld1 - HM.ld0) / h, D = P.depth, L = P.len, grad = HM.grad;
+  if (!packed) packed = new Float32Array(N_MAX * STRIDE);
+  let n = 0;
+  for (let b = 0, nb = bladesBase.length / 10; b < nb; b++) {
+    const o = b * 10, x = bladesBase[o], d = bladesBase[o + 1];
+    const gi = (x - HM.x0) / (HM.x1 - HM.x0) * w - 0.5, gj = (Math.log(d) - HM.ld0) / dlog - 0.5;
+    const i0 = Math.max(0, Math.min(w - 2, Math.floor(gi))), j0 = Math.max(0, Math.min(h - 2, Math.floor(gj)));
+    const fx = Math.min(1, Math.max(0, gi - i0)), fy = Math.min(1, Math.max(0, gj - j0));
+    const k00 = (j0 * w + i0) * 4, k10 = k00 + 4, k01 = k00 + w * 4, k11 = k01 + 4;
+    const bl = c => (hmData[k00 + c] * (1 - fx) + hmData[k10 + c] * fx) * (1 - fy) + (hmData[k01 + c] * (1 - fx) + hmData[k11 + c] * fx) * fy;
+    const Hu = bl(0), cav = bl(1), path = bl(2), light = bl(3);
+    const g0 = (j0 * w + i0) * 2;
+    const H = Hu * D;
+    const clr = P.hills === 2 ? 0 : Math.max(path, clearing(x, d));
+    const hb = bladesBase[o + 2] * L * (1 - 0.62 * clr);
+    const yRoot = HY - F0 * (H - HC) / d, yTip = HY - F0 * (H + hb * 0.92 - HC) / d;
+    const xsr = CX0 + x * F0 / d;
+    const ci = Math.max(0, Math.min(OC.w - 1, Math.round((xsr - OC.xs0) / (OC.xs1 - OC.xs0) * OC.w - 0.5)));
+    const rj = Math.max(0, Math.min(h - 1, Math.round(gj)));
+    const q = (rj * OC.w + ci) * 4;
+    if (OC.data[q] - yTip < -10) continue;            // hidden behind a nearer hill
+    const t = n * STRIDE;
+    packed.set(bladesBase.subarray(o, o + 10), t);
+    packed[t + 10] = Hu; packed[t + 11] = cav; packed[t + 12] = path; packed[t + 13] = light;
+    packed[t + 14] = grad[g0]; packed[t + 15] = grad[g0 + 1];
+    packed[t + 16] = OC.data[q + 2] - yTip;            // above the foot of its slope
+    packed[t + 17] = yTip - OC.data[q + 3];            // below its slope's silhouette
+    packed[t + 18] = clr;
+    n++;
+  }
+  bladeCount = n;
+  gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, packed, 0, n * STRIDE);
+}
+let occTimer = 0;
+function scheduleOcclusion() { clearTimeout(occTimer); occTimer = setTimeout(() => { buildOcclusion(); packBlades(); }, 80); }
+
+function rebuildTerrain() {
+  hmData = buildHeightmap();
+  gl.bindTexture(gl.TEXTURE_2D, hmTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, HM.w, HM.h, 0, gl.RGBA, gl.FLOAT, hmData);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  gl.bindTexture(gl.TEXTURE_2D, grTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, HM.w, HM.h, 0, gl.RG, gl.FLOAT, HM.grad);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  const gx = (GIRL.xs - CX0) * GIRL.d / F0;
+  girlGround = terrainH(gx, GIRL.d);
+  sampleSiteLight();
+  buildOcclusion();
+  if (bladesBase) packBlades();
+}
+function upload() {
+  bladesBase = null;
+  rebuildTerrain();
+  bladesBase = buildBlades();
+  packBlades();
+}
+// Width and style reshape the land: rebuild once the slider settles, with a quiet status pill.
+let reshapeTimer = 0;
+function scheduleReshape() {
+  clearTimeout(reshapeTimer);
+  reshapeTimer = setTimeout(() => {
+    document.body.classList.add("reshaping");
+    setTimeout(() => { if (bladesValley !== (P.hills === 2)) upload(); else rebuildTerrain(); document.body.classList.remove("reshaping"); }, 30);
+  }, 220);
+}
+
+// ---------------------------------------------------------------------------
+// camera: level, off-axis so the banner rows stay put and taller frames add sky
+let W = 1, H = 1, dpr = 1, fpx = F0, PV = new Float32Array(16);
+function frustum(l, r, b, t, n, f) {
+  return new Float32Array([2 * n / (r - l), 0, 0, 0, 0, 2 * n / (t - b), 0, 0, (r + l) / (r - l), (t + b) / (t - b), -(f + n) / (f - n), -1, 0, 0, -2 * f * n / (f - n), 0]);
+}
+const VIEWPORT = { s: 1, xL: 0, yTop: 0 };        // banner px -> device px scale, and the banner column at the left edge
+function updateCamera() {
+  // Hero 16:9: the whole banner width fills the window and taller windows add sky above.
+  // Narrow, tall windows (phones, portrait tablets) crop the sides around the desk instead, so the
+  // grass and the desk keep a readable size rather than shrinking into a thin strip.
+  let s = W / W0, xL = 0, xR = W0;
+  const aspect = W / H;
+  if (aspect < 1.1) {
+    const span = W0 * Math.min(1, Math.max(0.36, aspect / 1.1)), c = Math.min(Math.max(1330, span / 2), W0 - span / 2);
+    s = W / span; xL = c - span / 2; xR = c + span / 2;
+  }
+  const yTop = H0 - H / s;
+  VIEWPORT.s = s; VIEWPORT.xL = xL; VIEWPORT.yTop = yTop;
+  fpx = F0 * s;
+  const n = 0.3, f = 600;
+  const Pm = frustum((xL - CX0) / F0 * n, (xR - CX0) / F0 * n, (HY - H0) / F0 * n, (HY - yTop) / F0 * n, n, f);
+  // view: translate by -eye (camera looks down -z, level)
+  const V = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -HC, 0, 1]);
+  // PV = Pm * V (column-major)
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let acc = 0; for (let k = 0; k < 4; k++) acc += Pm[k * 4 + r] * V[c * 4 + k]; PV[c * 4 + r] = acc; }
+}
+
+const stage = document.getElementById("stage");
+// Always the screen's full pixel density (no automatic blur-to-go-faster), capped only so a
+// window bigger than 4K stays near 10 million pixels. A device that can't keep 20 fps at all
+// steps down once, to 1.5x, which is still crisp.
+let densityCap = 3;
+function resize() {
+  const r = stage.getBoundingClientRect();
+  const native = Math.min(window.devicePixelRatio || 1, densityCap);
+  dpr = Math.min(native, Math.sqrt(10.2e6 / Math.max(1, r.width * r.height)));
+  W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr));
+  canvas.width = W; canvas.height = H;
+  updateCamera();
+}
+new ResizeObserver(resize).observe(stage);
+matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener?.("change", resize);
+
+// ---------------------------------------------------------------------------
+function setCommon(u) {
+  gl.uniformMatrix4fv(u.uPV, false, PV);
+  if (u.uHM) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, hmTex); gl.uniform1i(u.uHM, 0); }
+  if (u.uGR) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, grTex); gl.uniform1i(u.uGR, 3); }
+  if (u.uDom) gl.uniform4f(u.uDom, HM.x0, HM.x1, HM.ld0, HM.ld1);
+  if (u.uDepth) gl.uniform1f(u.uDepth, P.depth);
+  for (const [k, , n] of PAL_INFO) if (u[n]) gl.uniform3fv(u[n], hex(PAL[k]));
+  if (u.uHaze) gl.uniform1f(u.uHaze, P.haze);
+  if (u.uBaseAmt) gl.uniform1f(u.uBaseAmt, P.base);
+  if (u.uSoftSh) gl.uniform1f(u.uSoftSh, P.hills === 2 ? 1 : 0);
+  if (u.uOverall) gl.uniform1f(u.uOverall, P.overall);
+  if (u.uTin) { gl.uniform1fv(u.uTin, TONE_IN); gl.uniform1fv(u.uTout, TONE_OUT); gl.uniform1i(u.uRaw, rawTone ? 1 : 0); }
+}
+// measured: render grass luminance quantiles -> the banner's (see calibrate.js)
+let TONE_IN = [0.2519, 0.3151, 0.3764, 0.4135, 0.4537, 0.498, 0.5737, 0.6544, 1.0];
+let TONE_OUT = [0.1367, 0.16, 0.208, 0.2757, 0.3857, 0.5052, 0.6003, 0.6976, 1.0];
+let rawTone = false;
+
+let simTime = 0, paused = false, showDesk = true;
+// the desk set stands where she sits; Lift and Size move and scale it like her
+const SET = { get yaw() { return P.angle * Math.PI / 180; }, dx: -0.1 };
+// ground under a point of the set (set frame, metres) in world height
+function setGround(lx, lz) {
+  const c = Math.cos(SET.yaw), s = Math.sin(SET.yaw), k = P.gsize;
+  const x = (GIRL.xs - CX0) * GIRL.d / F0 + SET.dx + P.deskX + (c * lx + s * lz) * k, d = GIRL.d + P.deskDepth - (-s * lx + c * lz) * k;
+  return terrainH(x, d) * P.depth;
+}
+function setSetUniforms(u, on) {
+  if (!u.uSet) return;
+  // the desk rests on the higher of its two ends (the lower end runs into the ground); the chair sits on its own spot
+  const deskY = Math.max(setGround(-0.67, 0), setGround(0.3, 0)) + P.lift;
+  gl.uniform4f(u.uSet, (GIRL.xs - CX0) * GIRL.d / F0 + SET.dx + P.deskX, deskY, -GIRL.d - P.deskDepth, SET.yaw);
+  gl.uniform1f(u.uSetScale, P.gsize); gl.uniform1f(u.uSetOn, on ? 1 : 0);
+  gl.uniform3f(u.uMug, P.mugX, P.mugZ, P.mugSize);
+  const mug = deskSet.mugBox, caster = deskSet.boxes[mug];
+  boxC[mug*4] = caster.c[0]+P.mugX;
+  boxC[mug*4+1] = .754+(caster.c[1]-.754)*P.mugSize;
+  boxC[mug*4+2] = caster.c[2]+P.mugZ;
+  for (let axis=0;axis<3;axis++) boxH[mug*3+axis]=caster.h[axis]*P.mugSize;
+  gl.uniform1f(u.uMonitor, P.monitor);
+  const pivot = [-.12,.754,-.09];
+  for (let i=5;i<8;i++) {
+    const box=deskSet.boxes[i];
+    for (let axis=0;axis<3;axis++) {
+      boxC[i*4+axis]=pivot[axis]+(box.c[axis]-pivot[axis])*P.monitor;
+      boxH[i*3+axis]=box.h[axis]*P.monitor;
+    }
+  }
+  gl.uniform1fv(u.uPitch, boxPitch);
+  gl.uniform4fv(u.uBoxC, boxC); gl.uniform3fv(u.uBoxH, boxH);
+}
+const updateBrush = grassBrush(canvas,gl);
+function render() {
+  // 1) wind field
+  gl.bindFramebuffer(gl.FRAMEBUFFER, windFB);
+  gl.viewport(0, 0, 256, 128);
+  gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(progWind.p);
+  gl.uniform4f(progWind.u.uDom, HM.x0, HM.x1, HM.ld0, HM.ld1);
+  gl.uniform1f(progWind.u.uTime, simTime);
+  gl.uniform1f(progWind.u.uGust, P.gust);
+  gl.uniform1f(progWind.u.uWindX, windRun); gl.uniform1f(progWind.u.uWindSp, AIR.speed);
+  gl.bindVertexArray(vaoTri); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+  // 2) scene, into a multisampled buffer
+  ensurePost();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.fb);
+  gl.viewport(0, 0, W, H);
+  const sky = hex(PAL.sky);
+  gl.clearColor(sky[0], sky[1], sky[2], 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
+
+  if (P.view === 0) {
+    const deskOn = showDesk;
+    if (deskOn) {
+      gl.useProgram(progDesk.p);
+      const u = progDesk.u;
+      gl.activeTexture(gl.TEXTURE6);
+      gl.bindTexture(gl.TEXTURE_2D,crtTexture);
+      gl.uniform1i(u.uCrtFace,6);
+      setCommon(u);
+      setSetUniforms(u, true);
+      gl.uniform3f(u.uCam, 0, HC, 0);
+      gl.uniform1f(u.uSiteLight, siteLight);
+      gl.bindVertexArray(vaoDesk);
+      gl.drawElements(gl.TRIANGLES, deskSet.count, gl.UNSIGNED_INT, 0);
+    }
+
+    // blades, near -> far so hidden fragments are rejected early
+    gl.useProgram(progBlade.p);
+    const u = progBlade.u;
+    setCommon(u);
+    gl.uniform3f(u.uCam, 0, HC, 0);
+    gl.uniform1f(u.uTime, simTime);
+    gl.uniform1f(u.uLen, P.len);
+    gl.uniform1f(u.uDensity, P.density);
+    gl.uniform1i(u.uBrush,4);
+    gl.uniform1f(u.uWind, P.wind);
+    gl.uniform1f(u.uGust, P.gust);
+    gl.uniform1f(u.uLavAmt, P.lav);
+    gl.uniform1f(u.uFpx, fpx);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, windTex); gl.uniform1i(u.uWindTex, 1);
+    gl.uniform1i(u.uDbg, P.dbg || 0);
+    setSetUniforms(u, deskOn);
+    gl.bindVertexArray(vaoBlade);
+    gl.drawElementsInstanced(gl.TRIANGLES, bladeIdx.length, gl.UNSIGNED_SHORT, 0, bladeCount);
+  }
+  // ground last (mostly hidden under grass)
+  gl.useProgram(progGround.p);
+  setCommon(progGround.u);
+  gl.uniform1i(progGround.u.uView, P.view);
+  gl.bindVertexArray(vaoGround);
+  gl.drawElements(gl.TRIANGLES, gi.length, gl.UNSIGNED_INT, 0);
+
+  // 3) resolve, build the blur pyramid, finish to the canvas
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.fb);
+  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, post.fbR);
+  gl.blitFramebuffer(0, 0, W, H, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindTexture(gl.TEXTURE_2D, post.tex); gl.generateMipmap(gl.TEXTURE_2D);
+  gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(progPost.p);
+  const pu = progPost.u;
+  gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, post.tex); gl.uniform1i(pu.uScene, 5);
+  gl.uniform2f(pu.uTexel, 1 / W, 1 / H); gl.uniform2f(pu.uRes, W, H);
+  gl.uniform2f(pu.uView, VIEWPORT.xL, VIEWPORT.yTop);
+  gl.uniform1f(pu.uS, VIEWPORT.s); gl.uniform1f(pu.uTime, simTime);
+  gl.uniform3fv(pu.uSky, hex(PAL.sky));
+  gl.uniform1f(pu.uFx, P.view === 0 ? 1 : 0); gl.uniform1f(pu.uDof, P.dof); gl.uniform1f(pu.uHalo, P.glow);
+  gl.bindVertexArray(vaoTri); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindVertexArray(null);
+}
+
+// ---------------------------------------------------------------------------
+// Seattle's live wind (Open-Meteo, no key). Her panel's Strength 1.00 / Gusts 1.00 is what an
+// ordinary 4.2 m/s day looks like; the gust bands travel across the field at the real speed.
+const SEATTLE = "https://api.open-meteo.com/v1/forecast?latitude=47.6062&longitude=-122.3321&current=wind_speed_10m,wind_gusts_10m&wind_speed_unit=ms";
+const REF_SPEED = 4.2, REF_GUST = 7.6;           // m/s at Strength 1 and Gusts 1
+const AIR = { speed: REF_SPEED, gusts: REF_GUST, live: false, target: { wind: P.wind, gust: P.gust, speed: REF_SPEED } };
+let windRun = 0;
+function applyAir(speed, gusts) {
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  AIR.target.speed = clamp(speed, 0.3, 25);
+  AIR.target.wind = clamp(speed / REF_SPEED, 0.12, 2) * (REDUCED ? 0.35 : 1);
+  AIR.target.gust = clamp(gusts / REF_GUST, 0.15, 2);
+}
+async function fetchSeattleWind() {
+  try {
+    const r = await fetch(SEATTLE, { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const c = (await r.json()).current;
+    const first = !AIR.live;
+    AIR.live = true; AIR.reading = { speed: c.wind_speed_10m, gusts: c.wind_gusts_10m, time: c.time };
+    applyAir(c.wind_speed_10m, c.wind_gusts_10m);
+    // the first reading usually lands before the grass fades in: start right at it
+    if (first && simTime < 1.5) { P.wind = AIR.target.wind; P.gust = AIR.target.gust; AIR.speed = AIR.target.speed; }
+  } catch (err) { console.warn("Seattle wind unavailable, using the tuned breeze", err); }
+}
+// ease toward a new reading over a few seconds so the field never lurches
+function stepAir(dt) {
+  const k = 1 - Math.exp(-dt / 2.5);
+  P.wind += (AIR.target.wind - P.wind) * k;
+  P.gust += (AIR.target.gust - P.gust) * k;
+  AIR.speed += (AIR.target.speed - AIR.speed) * k;
+  windRun += AIR.speed * dt;
+}
+const applySky = () => { document.documentElement.style.setProperty("--sky", PAL.sky); };
+applySky();
+
+const qs = new URLSearchParams(location.search);
+for (const k of Object.keys(DEFAULTS)) if (qs.has(k)) P[k] = parseFloat(qs.get(k));
+if (qs.has("t")) simTime = parseFloat(qs.get("t"));
+if (qs.get("paused") === "1") paused = true;
+if (qs.get("desk") === "0") showDesk = false;
+const liveWind = !qs.has("wind") && !qs.has("gust") && qs.get("seattle") !== "0";
+if (liveWind) { fetchSeattleWind(); setInterval(fetchSeattleWind, 10 * 60 * 1000); }
+else AIR.target = { wind: P.wind, gust: P.gust, speed: REF_SPEED * (.55 + .45 * P.gust) };
+updateCamera();
+
+// build, then run
+requestAnimationFrame(() => {
+  const t0 = performance.now();
+  upload();
+  requestAnimationFrame(() => document.body.classList.add("ready"));   // fade the scene in once the grass is planted
+  console.log("built in", Math.round(performance.now() - t0), "ms");
+  resize();
+  let last = performance.now(), frames = 0, fpsT = last, slowSeconds = 0;
+  const fpsEl = document.getElementById("fps");
+  const debug = qs.get("debug") === "1";
+  if (debug) fpsEl.style.display = "block";
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    updateBrush(dt, P.radius);
+    if (!paused) { simTime += dt; stepAir(dt); }
+    render();
+    frames++;
+    if (now - fpsT > 1000) {
+      const fps = frames * 1000 / (now - fpsT);
+      if (debug) fpsEl.textContent = `${Math.round(fps)} fps · ${W}×${H} · ${AIR.live ? AIR.reading.speed + " m/s Seattle" : "tuned breeze"}`;
+      // only a genuinely struggling device (under 20 fps for 4 s while visible) steps down, once
+      slowSeconds = document.visibilityState === "visible" && document.hasFocus() && fps < 20 ? slowSeconds + 1 : 0;
+      if (slowSeconds >= 4 && densityCap > 1.5 && (window.devicePixelRatio || 1) > 1.5) { densityCap = 1.5; resize(); }
+      frames = 0; fpsT = now;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+});
+window.__hills = {
+  P, AIR, gl, canvas, render, LAYERS, terrainH, rebuild: upload, reshape: rebuildTerrain, get bladeCount() { return bladeCount; }, get siteLight() { return siteLight; },
+  setTime: t => { simTime = t; },
+  forceSize: (w, h) => { W = w; H = h; canvas.width = w; canvas.height = h; updateCamera(); },
+  setTone: (tin, tout) => { TONE_IN = tin; TONE_OUT = tout; },
+  setRaw: v => { rawTone = v; },
+};
+</script>
+</body>
+</html>
