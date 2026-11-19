@@ -43,9 +43,13 @@ A segmented pill nav sits top centre, 24px from the top: Work, About, Experiment
 
 Clicking an item slides the thumb to it (260 ms ease-out) and sets the URL hash (`#work`, `#about`, `#experiments`, `#photos`), so back and forward move it too. The pages behind them do not exist yet. Phones get tighter padding (and 13px text under 360px) so all four fit.
 
-### Contact bar
+### Socials
 
-Top right, 60px from the edge and 24px from the top: the same track with three round slots for mail, LinkedIn and resume icons. The icons are inline SVGs redrawn from her drawings in Stevie Sans Book's own weight: 1.15px strokes (the font's stems are 0.081em, 1.13px at the nav's 14px), flat-cut ends and sharp joins like its terminals, and the LinkedIn "in" built from Stevie's own "in" proportions with its square dot. They take the nav's colours: #878787, #1B1B1B on hover. Nothing is selected. The white thumb fades in under the icon you hover, focus or press, glides between icons on the same 260 ms curve as the nav, and fades out when you leave. Every item presses in slightly (0.96–0.97) while held. Mail copies aashikaashok.work@gmail.com and shows "Email copied" under the mail icon (if the clipboard is blocked it opens the mail app instead); LinkedIn opens her profile in a new tab; Resume opens `aashika-ashok-resume.pdf` in a new tab. Below 820px wide it sits centred under the nav.
+Top right, 60px from the edge: three flat icon buttons (mail, LinkedIn, resume) sitting straight on the page, with no track or thumb. Each sits in an invisible 32px button against the nav's 48px bar, centred on the nav's centre line. At rest the icons are #1B1B1B at 53%, which lands on the nav's unselected #878787; on hover they go to full ink, with no circle or edge around them. Each presses in to 0.96 while held, and has a 36 × 40 hit area. Below 820px wide they sit centred, 8px under the nav.
+
+The icons are one set of inline SVGs, each exactly 14 × 14px: the same rounded square (radius 3) holds every glyph. Mail is the flap folding in from the corners to the centre, LinkedIn is Stevie's own "in" with its square i-dot, and the resume has its top-right corner folded with three lines of text. They are drawn in Stevie Sans Book's own weight: 1.15px strokes (the font's stems are 0.081em, 1.13px at the nav's 14px), with flat-cut ends and sharp joins like its terminals.
+
+Mail copies aashikaashok.work@gmail.com and shows a flat "Email copied" label under the mail icon (if the clipboard is blocked it opens the mail app instead); LinkedIn opens her profile in a new tab; Resume opens `aashika-ashok-resume.pdf` in a new tab.
 
 ## Tune panel (`?tune`)
 
