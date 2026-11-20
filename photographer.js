@@ -10,16 +10,17 @@ export function createWalker(reduced) {
     if(phase!=='photo'){resume={phase,elapsed,start};enter('photo');}
     else elapsed=0;
   }
-  function tick(dt,speed=1,pause=.22,walkSeconds=4) {
+  function tick(dt,speed=1,pause=.22,walkDistance=144) {
     if (reduced && phase !== 'photo') return state;
     elapsed += dt;
     let pose = 4, next = 4, blend = 0, bob = 0, flash = 0;
     if (phase === 'approach' || phase === 'travel') {
       if (!stepCount) {
-        legSeconds = Math.max(1, walkSeconds);
-        stepCount = Math.max(2, 2 * Math.round(legSeconds * speed / (2 * nominalCadence)));
-        end = direction * stepCount * stepLength / 2;
+        end = direction * walkDistance / 2;
         if (firstLeg) { start = -end; firstLeg = false; }
+        const distance = Math.abs(end - start);
+        stepCount = Math.max(1, Math.round(distance / stepLength));
+        legSeconds = distance * nominalCadence / (stepLength * speed);
       }
       const progress = Math.min(1, elapsed / legSeconds);
       const steps = progress * stepCount;

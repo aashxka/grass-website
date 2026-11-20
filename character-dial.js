@@ -7,7 +7,7 @@ export async function mountCharacterDial(scene,game) {
     'Route near / far (m)': ['routeDepth', -4, 4, .05],
     'Height above ground (m)': ['footHeight', -.25, .75, .01],
     'Walking speed (×)': ['walkSpeed', .25, 3, .05],
-    'Walk duration (s)': ['walkSeconds', 1, 12, .25],
+    'Walk distance (px)': ['walkDistance', 12, 900, 1],
     'Pause after photo (s)': ['photoPause', 0, 5, .05]
   };
   const config = {};
