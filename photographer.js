@@ -67,7 +67,7 @@ export function createFigure(gl,program) {
   img.onload=()=>{gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,tex);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
     gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);ready=true;};
-  img.src='./fetch/figure.webp';
+  img.src='./fetch/hd/figure.webp';
   return (s,pv,x,y,d,light,rim,size)=>{
     if(!ready)return;
     const u=shader.u;gl.useProgram(shader.p);gl.bindVertexArray(vao);

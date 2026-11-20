@@ -73,28 +73,11 @@ export function createFetch(stage,reduced,gl,program) {
   const images=[];
   for(const i of poses){
     images[i]=new Image();
-    images[i].src='fetch/dog-'+String(i).padStart(2,'0')+'.webp';
+    images[i].src='fetch/hd/dog-'+String(i).padStart(2,'0')+'.webp';
   }
-  // Tint each loaded sprite once, preserving cream markings and dark facial detail.
-  const coats=images.map(im=>{
-    const coat=document.createElement('canvas');
-    im.addEventListener('load',()=>{
-      coat.width=im.width;coat.height=im.height;
-      const paint=coat.getContext('2d');
-      paint.drawImage(im,0,0);
-      const pixels=paint.getImageData(0,0,coat.width,coat.height),rgb=pixels.data;
-      for(let i=0;i<rgb.length;i+=4){
-        const r=rgb[i],g=rgb[i+1],b=rgb[i+2];
-        const fur=smooth(clamp((r-b-3)/27))*smooth(clamp((g-b+2)/11));
-        rgb[i]=r*(1-.10*fur);
-        rgb[i+1]=g*(1-.32*fur);
-        rgb[i+2]=b*(1-.47*fur);
-      }
-      paint.putImageData(pixels,0,0);
-      coat.dataset.ready='1';
-    },{once:true});
-    return coat;
-  });
+  // Logical frame sizes keep the original paw, muzzle and ball anchors in scene units.
+  const poseSize=[[341,180],[368,151],[358,170],[323,160],[343,192],[305,222],[296,216],[231,220],[227,226],[197,228],[198,241],[175,264],[211,236],[236,214],[218,218],[350,201],[258,155],[279,154],[273,192],[218,198],[129,227],[127,228],[114,278],[113,248]];
+  const loaded=i=>images[i]?.naturalWidth>0;
   let phase='opening',time=0,run=0,from=0,to=1,pos=0,first=true,release,previousBall;
   const ballContact=new Float32Array(3);
   const paws=new Float32Array(24); let lastStamp=-1;
@@ -114,7 +97,7 @@ export function createFetch(stage,reduced,gl,program) {
     const D=settings.Dog,B=settings.Ball;
     const scale=view.scale,w=view.width,h=view.height;
     const pixelRatio=view.pixelRatio;
-    if(!coats[7].dataset.ready || ![11,12,15,18].every(i=>coats[i].dataset.ready))return;
+    if(![7,11,12,15,18].every(loaded))return;
     time+=dt;
     const start=Math.max(200,view.left+w/scale*.07),end=Math.min(1870,view.left+w/scale*.93);
     const left=Math.max(start,Math.min(end-100,20*D['Left end (%)']));
@@ -164,7 +147,8 @@ export function createFetch(stage,reduced,gl,program) {
     if(phase!=='chase'){
       paws.set([dog.worldX,dog.d,direction,.32*D['Grass pressure']*D.Size]);
     }
-    const im=coats[pose].dataset.ready?coats[pose]:coats[7],dw=im.width*factor,dh=im.height*factor;
+    const frame=loaded(pose)?pose:7, im=images[frame];
+    const dw=poseSize[frame][0]*factor,dh=poseSize[frame][1]*factor;
     const margin=Math.ceil(dw*.18+5);
     prepare(0,dog.x-dw/2-margin,dog.y-dh-margin-lift,dw+2*margin,dh+2*margin+lift,dog.d,pixelRatio);
     ctx.save();ctx.translate(dw/2+margin,dh+margin);ctx.scale(direction,1);
@@ -177,11 +161,11 @@ export function createFetch(stage,reduced,gl,program) {
     let point=rest,angle=0;
     if(phase==='opening')point=hand;
     // Use the same raised muzzle at the flight endpoint and through the hold.
-    const catchFrame=images[18],catchScale=atEnd.ppm*D.Size*.00385;
+    const catchFrame=poseSize[18],catchScale=atEnd.ppm*D.Size*.00385;
     const muzzle={
-      x:atEnd.x+direction*.472*catchFrame.width*catchScale,
+      x:atEnd.x+direction*.472*catchFrame[0]*catchScale,
       y:atEnd.y-(D['Paw height (m)']-B['Rest height (m)'])*atEnd.ppm
-        -.833*catchFrame.height*catchScale+radius*.5
+        -.833*catchFrame[1]*catchScale+radius*.5
     };
     if(phase==='chase'){
       const t=clamp(time/interceptTime),src=release||hand;
@@ -191,8 +175,8 @@ export function createFetch(stage,reduced,gl,program) {
         const [mx,my]=frame===11?[.32,.91]:frame===12?[.42,.86]:[.47,.86];
         const f=ground.ppm*D.Size*.00385;
         return {
-        x:ground.x+direction*mx*images[frame].width*f,
-        y:ground.y-my*images[frame].height*f+radius*.5-elevation};
+        x:ground.x+direction*mx*poseSize[frame][0]*f,
+        y:ground.y-my*poseSize[frame][1]*f+radius*.5-elevation};
       };
       const j=(catchAt-takeoff)/(1-takeoff);
       const target=mouth(hit,4*j*(1-j)*B['Arc height (px)']*.53*scale,11);

@@ -204,8 +204,8 @@
 </script>
 
 <script type="module">
-import { createFetch } from "./fetch.js";
-import { createWalker, createFigure } from "./photographer.js";
+import { createFetch } from "./fetch.js?v=hd1";
+import { createWalker, createFigure } from "./photographer.js?v=hd1";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
 // ============================================================================
@@ -801,7 +801,7 @@ crtImage.onload = () => {
   gl.generateMipmap(gl.TEXTURE_2D);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
 };
-crtImage.src = "crt-face.jpg";
+crtImage.src = "fetch/hd/crt-face.jpg";
 
 
 // Finishing pass: depth of field focused on her, soft halation, a warm hazy sky with
@@ -1125,18 +1125,15 @@ function updateCamera() {
 }
 
 const stage = document.getElementById("stage");
-// Always the screen's full pixel density (no automatic blur-to-go-faster), capped only so a
-// window bigger than 4K stays near 10 million pixels. A device that can't keep 20 fps at all
-// steps down once, to 1.5x, which is still crisp.
-let densityCap = 3;
 function resize() {
   const r = stage.getBoundingClientRect();
-  const native = Math.min(window.devicePixelRatio || 1, densityCap);
+  const native = (window.devicePixelRatio || 1) * (window.visualViewport?.scale || 1);
   dpr = Math.min(native, Math.sqrt(10.2e6 / Math.max(1, r.width * r.height)));
   W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr));
   canvas.width = W; canvas.height = H;
   updateCamera();
 }
+window.visualViewport?.addEventListener('resize', resize);
 new ResizeObserver(resize).observe(stage);
 function watchPixelDensity(){
   matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change",()=>{
@@ -1426,7 +1423,7 @@ requestAnimationFrame(() => {
   requestAnimationFrame(() => document.body.classList.add("ready"));   // fade the scene in once the grass is planted
   console.log("built in", Math.round(performance.now() - t0), "ms");
   resize();
-  let last = performance.now(), frames = 0, fpsT = last, slowSeconds = 0;
+  let last = performance.now(), frames = 0, fpsT = last;
   const fpsEl = document.getElementById("fps");
   const debug = qs.get("debug") === "1";
   if (debug) fpsEl.style.display = "block";
@@ -1441,9 +1438,6 @@ requestAnimationFrame(() => {
     if (now - fpsT > 1000) {
       const fps = frames * 1000 / (now - fpsT);
       if (debug) fpsEl.textContent = `${Math.round(fps)} fps · ${W}×${H} · ${AIR.live ? AIR.reading.speed + " m/s Seattle" : "tuned breeze"}`;
-      // only a genuinely struggling device (under 20 fps for 4 s while visible) steps down, once
-      slowSeconds = document.visibilityState === "visible" && document.hasFocus() && fps < 20 ? slowSeconds + 1 : 0;
-      if (slowSeconds >= 4 && densityCap > 2 && (window.devicePixelRatio || 1) > 1.5) { densityCap = 2; resize(); }
       frames = 0; fpsT = now;
     }
     requestAnimationFrame(frame);
