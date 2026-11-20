@@ -5,18 +5,18 @@ const smooth=t=>t*t*(3-2*t);
 export const fetchControls={
   Dog:{
     'Size':[.9,.55,1.7,.05], 'Left end (%)':[17,5,45,1], 'Right end (%)':[88,55,95,1],
-    'Ridge depth (m)':[0,-1.5,1.5,.05], 'Paw height (m)':[.24,0,.55,.01],
+    'Ridge depth (m)':[-1.35,-1.5,1.5,.05], 'Paw height (m)':[0.27,0,.55,.01],
     'Coat warmth':[.2,0,1,.01], 'Coat hue (°)':[0,-40,40,1],
-    'Saturation':[.87,.35,1.5,.01], 'Exposure':[1.03,.55,1.6,.01], 'Grass pressure':[1.2,0,2,.05],
+    'Saturation':[.87,.35,1.5,.01], 'Exposure':[1.03,.55,1.6,.01], 'Grass pressure':[1.4,0,2,.05],
     'Run speed (×)':[1.15,.4,2.5,.05], 'Gallop tempo (×)':[.95,.5,2,.05],
     'Sit before rising (s)':[.1,.1,3,.1], 'Balance hold (s)':[1.4,.1,3,.05]
   },
   Ball:{
     'Size':[.7,.55,2,.05], 'Beside dog (m)':[.4,.3,1.4,.02],
-    'Rest height (m)':[.23,.05,.65,.01], 'Arc height (px)':[220,30,350,5],
+    'Rest height (m)':[0.27,.05,.65,.01], 'Arc height (px)':[220,30,350,5],
     'Flight time (s)':[1.15,.45,2.5,.05], 'Bounce height (px)':[13,0,85,1],
-    'Ring gap (px)':[5,0,30,.5], 'Glow opacity':[.56,0,1,.01], 'Pulse rate (Hz)':[.48,0,3,.01],
-    'Layer blur (px)':[3,0,14,.25], 'Glow rate (Hz)':[.35,0,3,.01]
+    'Ring gap (px)':[3.5,0,30,.5], 'Glow opacity':[0.25,0,1,.01], 'Pulse rate (Hz)':[0.73,0,3,.01],
+    'Layer blur (px)':[5.5,0,14,.25], 'Glow rate (Hz)':[1.18,0,3,.01]
   }
 };
 export function createFetch(stage,reduced,gl,program) {
@@ -37,8 +37,20 @@ export function createFetch(stage,reduced,gl,program) {
       gl_Position=vec4((2.*screen-1.)*vec2(1.,-1.)*depth,-pv[2][2]*depth+pv[3][2],depth);}
   `,`#version 300 es
     precision highp float;uniform sampler2D sprite;uniform float depth;
+    uniform vec4 neck; uniform vec2 extent; uniform float pitch;
     in vec2 uv;out vec4 color;
-    void main(){vec4 texel=texture(sprite,uv);
+    void main(){
+      vec2 sampleUV=uv;
+      if(pitch>0.){
+        vec2 delta=(uv-neck.xy)*extent;
+        float towardNose=delta.x*neck.z;
+        float weight=smoothstep(-.07,.12,towardNose/neck.w)
+          *(1.-smoothstep(.01,.19,delta.y/neck.w));
+        float angle=pitch*neck.z*weight;
+        vec2 src=mat2(cos(angle),sin(angle),-sin(angle),cos(angle))*delta;
+        sampleUV=neck.xy+src/extent;
+      }
+      vec4 texel=texture(sprite,sampleUV);
       if(texel.a < .12) discard;
       color=vec4(texel.rgb,log(depth/4.)/log(60.));}
   `);
@@ -53,6 +65,8 @@ export function createFetch(stage,reduced,gl,program) {
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,item.source);
+      gl.uniform1f(u.pitch,item.pitch||0);
+      if(item.pitch){gl.uniform4fv(u.neck,item.neck);gl.uniform2f(u.extent,item.rect[2],item.rect[3]);}
       gl.uniform4fv(u.rect,item.rect);gl.uniform1f(u.depth,item.depth);
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     }
@@ -154,7 +168,6 @@ export function createFetch(stage,reduced,gl,program) {
     ctx.save();ctx.translate(dw/2+margin,dh+margin);ctx.scale(direction,1);
     ctx.fillStyle='rgba(53,57,26,.18)';ctx.beginPath();ctx.ellipse(direction*5,lift,dw*.27,Math.max(1,factor*7),.05,0,2*Math.PI);ctx.fill();
     ctx.filter='brightness('+((.81+.19*dog.light)*D.Exposure)+') sepia('+D['Coat warmth']+') hue-rotate('+D['Coat hue (°)']+'deg) saturate('+D.Saturation+')';
-    if(phase==='chase' && jump===0)ctx.rotate(-.13*Math.sin(Math.PI*run/takeoff));
     ctx.drawImage(im,-dw*.50,-dh,dw,dh);ctx.restore();
     let radius=atEnd.ppm*.105*B.Size;
     const rest={x:atEnd.x+direction*atEnd.ppm*B['Beside dog (m)'],y:atEnd.y-radius};
@@ -183,6 +196,15 @@ export function createFetch(stage,reduced,gl,program) {
       if(first)radius*=1/mix(atEnd.ppm/hand.ppm,1,t);
       point=run>=catchAt?mouth(dog,lift,pose):{x:mix(src.x,target.x,t),y:mix(src.y,target.y,t)-4*t*(1-t)*B['Arc height (px)']*scale};
       angle=direction*t*8;
+    }
+    const body=sprites[0];
+    body.pitch=0;
+    if(phase==='chase' && jump===0 && frame<4){
+      const neckX=dog.x+direction*.20*dw, neckY=dog.y-.70*dh;
+      const elevation=Math.atan2(neckY-point.y,Math.max(dw*.25,Math.abs(point.x-neckX)));
+      const settle=smooth(clamp((takeoff-run)*duration/.12));
+      body.pitch=Math.max(0,Math.min(.52,elevation))*settle*smooth(clamp(time/.09));
+      body.neck=[(neckX-body.rect[0])/body.rect[2],(neckY-body.rect[1])/body.rect[3],direction,dw];
     }
     if(phase==='retrieve'){
       const drop=clamp((time-.72)/.35),bounce=clamp((time-1.07)/.30);

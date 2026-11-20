@@ -4,7 +4,7 @@ export function createWalker(reduced) {
   let phase = 'approach', elapsed = 0, direction = 1, start = left, x = left, leading = 0;
   const state = { x, direction, pose: 4, next: 4, blend: 0, bob: 0, flash: 0, phase };
   function enter(name) { phase = name; elapsed = 0; start = x; }
-  let completedLegs=0, resume=null;
+  let resume=null;
   function photo() {
     if(phase!=='photo'){resume={phase,elapsed,start};enter('photo');}
     else elapsed=0;
@@ -29,7 +29,7 @@ export function createWalker(reduced) {
       flash=reduced ? 0 : Math.max(0,1-Math.abs(elapsed-.89)/.095);
       if(elapsed>=1.56+pause){
         if(resume){({phase,elapsed,start}=resume); resume=null;}
-        else enter(++completedLegs===2?'idle':'turn');
+        else enter('turn');
       }
     } else if(phase==='turn') {
       pose=elapsed<.12 ? 4 : 7; next=pose;

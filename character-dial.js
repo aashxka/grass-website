@@ -14,7 +14,7 @@ export async function mountCharacterDial(scene,game) {
     config[label] = [scene[key],min,max,step];
   }
   const kit=createDialKit('Photographer',config,{
-    id:'photographer',persist:{key:'ridge-photographer-size-v4'}
+    id:'photographer',persist:{key:'ridge-photographer-size-v5'}
   });
   function apply(values) {
     for (const [label,[key]] of Object.entries(controls)) {
@@ -24,7 +24,7 @@ export async function mountCharacterDial(scene,game) {
   apply(kit.getValues());
   kit.subscribe(apply);
   const fetchKit=createDialKit('Fetch',{Dog:{...fetchControls.Dog},Ball:{...fetchControls.Ball},Replay:{type:'action',label:'Replay opening throw'}},{
-    id:'greyhound-fetch',persist:{key:'greyhound-fetch-v3'},onAction:()=>game.replay()
+    id:'greyhound-fetch',persist:{key:'greyhound-fetch-v4'},onAction:()=>game.replay()
   });
   function applyFetch(values){
     Object.assign(game.settings.Dog,values.Dog);
