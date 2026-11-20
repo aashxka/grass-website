@@ -1220,7 +1220,14 @@ function figureColumn(step) {
 function updateFigure(dt) {
   const s=walker.tick(fetchGame.throwing ? 0 : dt,P.walkSpeed,P.photoPause);
   if(fetchGame.throwing){s.pose=s.next=fetchGame.throwPose;s.blend=s.bob=s.flash=0;}
-  const d=32.9+P.routeDepth;
+  // Follow the visible rear silhouette in this screen column.
+  const ray=(figureColumn(s.x)-CX0)/F0;
+  let crest=23, highest=-Infinity;
+  for(let depth=23;depth<=64;depth+=.5){
+    const projected=(terrainH(ray*depth,depth)*P.depth-HC)/depth;
+    if(projected>highest){highest=projected;crest=depth;}
+  }
+  const d=crest+P.routeDepth-1.4;
   const x=(figureColumn(s.x)-CX0)*d/F0;
   const y=terrainH(x,d)*P.depth;
   const gx=(x-HM.x0)/(HM.x1-HM.x0)*HM.w-.5;

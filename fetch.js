@@ -15,7 +15,7 @@ export const fetchControls={
     'Size':[.7,.55,2,.05], 'Beside dog (m)':[.4,.3,1.4,.02],
     'Rest height (m)':[.23,.05,.65,.01], 'Arc height (px)':[220,30,350,5],
     'Flight time (s)':[1.15,.45,2.5,.05], 'Bounce height (px)':[13,0,85,1],
-    'Glow opacity':[.14,0,1,.01], 'Pulse rate (Hz)':[.48,0,3,.01],
+    'Ring gap (px)':[5,0,30,.5], 'Glow opacity':[.56,0,1,.01], 'Pulse rate (Hz)':[.48,0,3,.01],
     'Layer blur (px)':[3,0,14,.25], 'Glow rate (Hz)':[.35,0,3,.01]
   }
 };
@@ -70,7 +70,7 @@ export function createFetch(stage,reduced,gl,program) {
   button.type='button';button.title='Throw ball';button.setAttribute('aria-label','Throw ball to the opposite end of the hill');
   button.style.cssText='position:absolute;z-index:3;width:44px;height:44px;border:0;border-radius:50%;padding:0;background:transparent;cursor:pointer;transform:translate(-50%,-50%)';
   stage.append(button);button.hidden=true;
-  const poses=[0,1,2,3,5,7,18,19,20,21,22,23];
+  const poses=[0,1,2,3,5,7,11,12,15,18,19,20,21,22,23];
   const images=[];
   for(const i of poses){
     images[i]=new Image();
@@ -115,7 +115,7 @@ export function createFetch(stage,reduced,gl,program) {
     const D=settings.Dog,B=settings.Ball;
     const scale=view.scale,w=view.width,h=view.height;
     const pixelRatio=view.pixelRatio;
-    if(!coats[7].dataset.ready || !coats[18].dataset.ready)return;
+    if(!coats[7].dataset.ready || ![11,12,15,18].every(i=>coats[i].dataset.ready))return;
     time+=dt;
     const start=Math.max(200,view.left+w/scale*.07),end=Math.min(1870,view.left+w/scale*.93);
     const left=Math.max(start,Math.min(end-100,20*D['Left end (%)']));
@@ -123,13 +123,13 @@ export function createFetch(stage,reduced,gl,program) {
     const direction=to===1?1:-1;
     if(phase==='opening'&&time>=.69){release={...hand};enter('chase')}
     const runDuration=(right-left)/(520*D['Run speed (×)']);
-    const catchAt=.75, takeoff=.52;
-    const interceptTime=B['Flight time (s)'];
-    const duration=Math.max(runDuration,interceptTime/catchAt);
-    const flightStart=duration*catchAt-interceptTime;
+    const duration=Math.max(B['Flight time (s)'],runDuration);
+    const leapTime=Math.min(.64,duration*.43);
+    const takeoff=1-leapTime/duration, catchAt=takeoff+.5*(1-takeoff);
+    const interceptTime=duration*catchAt;
     if(phase==='chase'){
       run=clamp(time/duration);
-      pos=mix(from,to,smooth(run));
+      pos=mix(from,to,run);
       if(run>=1)enter('retrieve');
     }
     const dog=view.ridge(mix(left,right,pos),D['Ridge depth (m)'],D['Paw height (m)']);
@@ -140,6 +140,7 @@ export function createFetch(stage,reduced,gl,program) {
     let pose=20;
     if(phase==='opening')pose=7;
     if(phase==='chase')pose=run===0?5:jump>0?18:Math.floor(time*11*D['Gallop tempo (×)'])%4;
+    if(jump>0)pose=jump<.20?12:jump<.64?11:jump<.82?12:15;
     if(phase==='retrieve'){
       pose=time<1.45?18:19;
       if(time>=1.84)enter('sit');
@@ -165,10 +166,12 @@ export function createFetch(stage,reduced,gl,program) {
       paws.set([dog.worldX,dog.d,direction,.32*D['Grass pressure']*D.Size]);
     }
     const im=coats[pose].dataset.ready?coats[pose]:coats[7],dw=im.width*factor,dh=im.height*factor;
-    prepare(0,dog.x-dw/2-5,dog.y-dh-3-lift,dw+10,dh+8+lift,dog.d,pixelRatio);
-    ctx.save();ctx.translate(dw/2+5,dh+3);ctx.scale(direction,1);
+    const margin=Math.ceil(dw*.18+5);
+    prepare(0,dog.x-dw/2-margin,dog.y-dh-margin-lift,dw+2*margin,dh+2*margin+lift,dog.d,pixelRatio);
+    ctx.save();ctx.translate(dw/2+margin,dh+margin);ctx.scale(direction,1);
     ctx.fillStyle='rgba(53,57,26,.18)';ctx.beginPath();ctx.ellipse(direction*5,lift,dw*.27,Math.max(1,factor*7),.05,0,2*Math.PI);ctx.fill();
     ctx.filter='brightness('+((.81+.19*dog.light)*D.Exposure)+') sepia('+D['Coat warmth']+') hue-rotate('+D['Coat hue (°)']+'deg) saturate('+D.Saturation+')';
+    if(phase==='chase' && jump===0)ctx.rotate(-.13*Math.sin(Math.PI*run/takeoff));
     ctx.drawImage(im,-dw*.50,-dh,dw,dh);ctx.restore();
     let radius=atEnd.ppm*.105*B.Size;
     const rest={x:atEnd.x+direction*atEnd.ppm*B['Beside dog (m)'],y:atEnd.y-radius};
@@ -182,17 +185,20 @@ export function createFetch(stage,reduced,gl,program) {
         -.833*catchFrame.height*catchScale+radius*.5
     };
     if(phase==='chase'){
-      const t=clamp((time-flightStart)/interceptTime),src=release||hand;
-      const catchPos=mix(from,to,smooth(catchAt));
+      const t=clamp(time/interceptTime),src=release||hand;
+      const catchPos=mix(from,to,catchAt);
       const hit=view.ridge(mix(left,right,catchPos),D['Ridge depth (m)'],D['Paw height (m)']);
-      const mouth=(ground,elevation)=>({
-        x:ground.x+direction*.472*catchFrame.width*ground.ppm*D.Size*.00385,
-        y:ground.y-.833*catchFrame.height*ground.ppm*D.Size*.00385+radius*.5-elevation
-      });
+      const mouth=(ground,elevation,frame)=>{
+        const [mx,my]=frame===11?[.32,.91]:frame===12?[.42,.86]:[.47,.86];
+        const f=ground.ppm*D.Size*.00385;
+        return {
+        x:ground.x+direction*mx*images[frame].width*f,
+        y:ground.y-my*images[frame].height*f+radius*.5-elevation};
+      };
       const j=(catchAt-takeoff)/(1-takeoff);
-      const target=mouth(hit,4*j*(1-j)*B['Arc height (px)']*.53*scale);
+      const target=mouth(hit,4*j*(1-j)*B['Arc height (px)']*.53*scale,11);
       if(first)radius*=1/mix(atEnd.ppm/hand.ppm,1,t);
-      point=run>=catchAt?mouth(dog,lift):{x:mix(src.x,target.x,t),y:mix(src.y,target.y,t)-4*t*(1-t)*B['Arc height (px)']*scale};
+      point=run>=catchAt?mouth(dog,lift,pose):{x:mix(src.x,target.x,t),y:mix(src.y,target.y,t)-4*t*(1-t)*B['Arc height (px)']*scale};
       angle=direction*t*8;
     }
     if(phase==='retrieve'){
@@ -206,14 +212,23 @@ export function createFetch(stage,reduced,gl,program) {
     ballContact[2]=phase==='opening'?0:clamp(1-Math.abs(rest.y-point.y)/(atEnd.ppm*.25));
     const pulse=phase==='wait'?(reduced?.5:.5-.5*Math.cos(time*2*Math.PI*B['Pulse rate (Hz)'])):0;
     radius*=1+.075*pulse;
-    const spread=radius*1.4+B['Layer blur (px)'];
+    const ringWidth=Math.max(1.3,radius*.23);
+    const ringRadius=radius+B['Ring gap (px)']+ringWidth/2;
+    const spread=ringRadius+ringWidth+B['Layer blur (px)']*2;
     const pad=Math.ceil(spread+2);
     const ballDepth=atEnd.d*(atEnd.ppm*.105*B.Size)/(radius/(1+.075*pulse));
     prepare(1,point.x-pad,point.y-pad,2*pad,2*pad,ballDepth-.015,pixelRatio);
     if(phase==='wait'){
-      const halo=ink.createRadialGradient(pad,pad,radius*.8,pad,pad,spread);
-      halo.addColorStop(0,'rgba(79,171,255,'+(B['Glow opacity']*(.75+.25*Math.cos((reduced?0:time)*2*Math.PI*B['Glow rate (Hz)'])))+')');halo.addColorStop(1,'rgba(79,171,255,0)');
-      ink.fillStyle=halo;ink.fillRect(0,0,pad*2,pad*2);
+      ink.save();
+      ink.strokeStyle=ink.shadowColor='#2588fa';
+      ink.globalAlpha=B['Glow opacity']*(.8+.2*Math.cos((reduced?0:time)*2*Math.PI*B['Glow rate (Hz)']));
+      ink.shadowBlur=B['Layer blur (px)']*pixelRatio;
+      ink.lineWidth=ringWidth;
+      for(let quadrant=0;quadrant<4;quadrant++){
+        const start=quadrant*Math.PI/2;
+        ink.beginPath();ink.arc(pad,pad,ringRadius,start+.12,start+Math.PI/2-.12);ink.stroke();
+      }
+      ink.restore();
     }
     ink.save();ink.filter='brightness('+(.87+.13*atEnd.light)+')';
     if(phase!=='opening'||time>=.44)ball(pad,pad,radius,angle);
