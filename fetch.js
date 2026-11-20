@@ -4,7 +4,7 @@ const smooth=t=>t*t*(3-2*t);
 
 export const fetchControls={
   Dog:{
-    'Size':[.9,.55,1.7,.05], 'Left end (%)':[17,5,45,1], 'Right end (%)':[88,55,95,1],
+    'Size':[.95,.55,1.7,.05], 'Left end (%)':[17,5,45,1], 'Right end (%)':[88,55,95,1],
     'Ridge depth (m)':[-1.35,-1.5,1.5,.05], 'Paw height (m)':[0.27,0,.55,.01],
     'Coat warmth':[.2,0,1,.01], 'Coat hue (°)':[0,-40,40,1],
     'Saturation':[.87,.35,1.5,.01], 'Exposure':[1.03,.55,1.6,.01], 'Grass pressure':[1.4,0,2,.05],

@@ -1,0 +1,224 @@
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/bricolage-grotesque-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.homepage {
+  --page-edge: 32px;
+  --page-top: calc(var(--page-edge) + env(safe-area-inset-top, 0px));
+  padding: var(--page-top)
+    calc(var(--page-edge) + env(safe-area-inset-right, 0px))
+    32px calc(var(--page-edge) + env(safe-area-inset-left, 0px));
+  position: relative;
+  z-index: 6;
+  pointer-events: none;
+  color: #1b1b1b;
+  font-family: "Stevie Sans Book", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.homepage .nav,
+.homepage h1,
+.homepage p,
+.homepage .social-link {
+  pointer-events: auto;
+}
+
+.homepage .nav {
+  position: absolute;
+  top: var(--page-top);
+  right: calc(var(--page-edge) + env(safe-area-inset-right, 0px));
+}
+
+.intro {
+  --default-text-width: max(23rem, 32%);
+  display: grid;
+  gap: var(--section-gap, 28px);
+  width: clamp(min(100%, 14rem), var(--text-width, var(--default-text-width)), 100%);
+  margin-top: var(--intro-offset, 0px);
+}
+
+.intro h1,
+.intro p {
+  margin: 0;
+}
+
+.intro h1 {
+  font-family: "Bricolage Grotesque", "Stevie Sans Book", system-ui, sans-serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.125;
+  letter-spacing: -0.02em;
+}
+
+.intro p {
+  color: rgb(27 27 27 / 70%);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.socials {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: calc(var(--social-gap, 40px) - var(--section-gap, 28px));
+  color: rgb(27 27 27 / 70%);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.socials > [aria-hidden="true"] {
+  width: 1px;
+  height: 15px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.social-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 180ms, opacity 180ms;
+}
+
+.social-link:focus-visible {
+  color: #1b1b1b;
+  opacity: 0.82;
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .social-link:hover {
+    color: #1b1b1b;
+    opacity: 0.82;
+  }
+}
+
+.social-icon {
+  display: block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  overflow: visible;
+}
+
+.social-icon path {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.linkedin path:nth-child(-n + 2),
+.email path:nth-child(2) {
+  stroke-dasharray: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .social-link:is(:hover, :focus-visible) .linkedin path:nth-child(-n + 2) {
+    animation: social-draw 470ms cubic-bezier(.22, .72, .26, 1) both;
+  }
+
+  .social-link:is(:hover, :focus-visible) .linkedin path:nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .social-link:is(:hover, :focus-visible) .linkedin path:nth-child(3) {
+    animation: social-dot 420ms cubic-bezier(.2, .8, .2, 1) 130ms both;
+  }
+
+  .social-link:is(:hover, :focus-visible) .email path:nth-child(2) {
+    animation: social-draw 590ms cubic-bezier(.22, .72, .26, 1) both;
+  }
+
+  .social-link:is(:hover, :focus-visible) .email path:nth-child(3) {
+    animation: social-spine 500ms ease-out both;
+  }
+
+  .social-link:is(:hover, :focus-visible) .resume path:first-child {
+    animation: social-page 540ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+}
+
+@keyframes social-draw {
+  from { stroke-dashoffset: 1; opacity: .48; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes social-dot {
+  0% { transform: scale(.55); opacity: .4; }
+  68% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes social-spine {
+  from { transform: translateX(-.8px); opacity: .6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes social-page {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  45% { transform: translateY(-1.4px) rotate(3deg); }
+}
+
+.copied {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 11px;
+  border: 1px solid rgb(27 27 27 / 14%);
+  border-radius: 999px;
+  background: #fff;
+  color: #1b1b1b;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.copied.show { opacity: 1; }
+
+.copy-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .homepage .nav {
+    position: relative;
+    inset: auto;
+    margin-inline-start: auto;
+  }
+
+  .intro {
+    --default-text-width: min(100%, 26rem);
+    margin-top: calc(28px + var(--intro-offset, 0px));
+  }
+}
+
+/* Keep the tuning panel below the navigation, including when every group is expanded. */
+.dialkit-panel[data-position="bottom-right"] {
+  max-height: calc(100dvh - 112px);
+}
+
+.dialkit-panel[data-position="bottom-right"] .dialkit-panel-inner[data-collapsed="false"] {
+  max-height: calc(100dvh - 112px) !important;
+}

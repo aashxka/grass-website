@@ -65,6 +65,41 @@ function loadStyles() {
   });
 }
 
+let dialRoot;
+function getDialRoot() {
+  dialRoot ??= loadStyles().then(() => createDialRoot({
+    position: "bottom-right", theme: "system", defaultOpen: true,
+  }));
+  return dialRoot;
+}
+
+export async function mountHomepageTune() {
+  await getDialRoot();
+  const intro = document.querySelector(".intro");
+  const sliders = [
+    ["Text width (%)", "--text-width", 32, 20, 100, "%"],
+    ["Intro offset (px)", "--intro-offset", 0, 0, 140, "px"],
+    ["Section spacing (px)", "--section-gap", 28, 0, 100, "px"],
+    ["Socials spacing (px)", "--social-gap", 40, 0, 100, "px"],
+  ];
+  const config = Object.fromEntries(sliders.map(([label, , value, min, max]) => [
+    label, [value, min, max, 1],
+  ]));
+  const kit = createDialKit("Homepage", config, {
+    id: "homepage",
+    persist: { key: "grass-website-homepage" },
+  });
+  function apply(values) {
+    for (const [label, property, defaultValue, , , unit] of sliders) {
+      const value = values[label];
+      if (value === defaultValue) intro.style.removeProperty(property);
+      else intro.style.setProperty(property, value + unit);
+    }
+  }
+  apply(kit.getValues());
+  kit.subscribe(apply);
+}
+
 export async function mountTune(h,game) {
   const { P, PAL, PAL_DEFAULT, PAL_INFO, DEFAULTS, LAYERS, GIRL, HIDE, WIND, hiddenLayers } = h;
   const farLayers = LAYERS.filter(layer => layer.d > GIRL.d);   // the banner's background hills
@@ -114,9 +149,7 @@ export async function mountTune(h,game) {
     return c;
   }
 
-  await loadStyles();
-  // top-left: the desk sits on the right of the hero
-  const root = createDialRoot({ position: "top-left", theme: "system", defaultOpen: true });
+  const root = await getDialRoot();
   const {mountCharacterDial}=await import("./character-dial.js");
   await mountCharacterDial(P,game);
   let style = P.hills;
