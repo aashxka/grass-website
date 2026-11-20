@@ -1,7 +1,8 @@
 // Distances use reference-banner pixels. One landing advances one stride length.
 export function createWalker(reduced) {
-  const left = -18, right = 18, stride = (right-left)/2, cadence = .57;
-  let phase = 'approach', elapsed = 0, direction = 1, start = left, x = left, leading = 0;
+  const stepLength = 18, nominalCadence = .72;
+  let stepCount = 0, legSeconds = 0, end = 0, firstLeg = true;
+  let phase = 'approach', elapsed = 0, direction = 1, start = 0, x = 0;
   const state = { x, direction, pose: 4, next: 4, blend: 0, bob: 0, flash: 0, phase };
   function enter(name) { phase = name; elapsed = 0; start = x; }
   let resume=null;
@@ -9,19 +10,27 @@ export function createWalker(reduced) {
     if(phase!=='photo'){resume={phase,elapsed,start};enter('photo');}
     else elapsed=0;
   }
-  function tick(dt,speed=1,pause=.22) {
+  function tick(dt,speed=1,pause=.22,walkSeconds=4) {
     if (reduced && phase !== 'photo') return state;
-    elapsed += dt * ((phase === 'approach' || phase === 'travel') ? speed : 1);
+    elapsed += dt;
     let pose = 4, next = 4, blend = 0, bob = 0, flash = 0;
     if (phase === 'approach' || phase === 'travel') {
-      const end = Math.max(left,Math.min(right,start + direction * stride * 2));
-      const steps = Math.abs(end-start)/stride;
-      const progress = Math.min(steps, elapsed/cadence);
-      x = start + direction * stride * progress;
-      const frame = leading + progress * 2;
-      pose = Math.floor(frame) % 4; next = (pose+1)%4; blend=Math.max(0,(frame%1-.78)/.22);
-      bob = .012 * Math.sin(Math.PI*progress)**2;
-      if (progress >= steps) { x=end; leading=(leading+4)%4; enter('photo'); }
+      if (!stepCount) {
+        legSeconds = Math.max(1, walkSeconds);
+        stepCount = Math.max(2, 2 * Math.round(legSeconds * speed / (2 * nominalCadence)));
+        end = direction * stepCount * stepLength / 2;
+        if (firstLeg) { start = -end; firstLeg = false; }
+      }
+      const progress = Math.min(1, elapsed / legSeconds);
+      const steps = progress * stepCount;
+      const footfall = steps % 1;
+      // A single exposure for each contact and passing pose avoids double legs.
+      pose = Math.floor(2 * steps + .000001) % 4;
+      next = pose;
+      const transfer = footfall - .10 * Math.sin(2 * Math.PI * footfall) / (2 * Math.PI);
+      x = start + (end - start) * (Math.floor(steps) + transfer) / stepCount;
+      bob = .022 * Math.sin(Math.PI * footfall) ** 2;
+      if (progress === 1) { x = end; stepCount = 0; enter('photo'); }
     } else if (phase === 'photo') {
       const times=[0,.16,.38,.66,1.05,1.29,1.56,1.78], poses=[4,4,5,6,6,5,4,4];
       let i=0; while(i<times.length-2 && elapsed>times[i+1]) i++;

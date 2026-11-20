@@ -205,7 +205,7 @@
 
 <script type="module">
 import { createFetch } from "./fetch.js?v=hd1";
-import { createWalker, createFigure } from "./photographer.js?v=hd1";
+import { createWalker, createFigure } from "./photographer.js?v=walk2";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
 // ============================================================================
@@ -267,7 +267,7 @@ const hiddenLayers = new Set();
 // Her tuned panel, copied from ?tune (2026-11-19): Scene, Hero 16:9, Rounded mounds at height 0.92, desk hidden
 // (its place kept: 2.6 m right, 1.1 m nearer, 2 cm up, size 1.38), haze 1.05, impact radius 28, grass length 0.54,
 // density 169%, lavender 0.5, darker blade root/lower/mid and tip highlight #577214 (PAL_DEFAULT).
-const DEFAULTS = { background: 80, deskX: 2.6, deskDepth: -1.1, radius: 28, view: 0, frame: 1, depth: 0.92, haze: 1.05, overall: 1.11, len: 0.54, density: 1.69, base: 0.5, lav: 0.5, wind: 1, gust: 1, subject: 1.9, routeX: -125, routeDepth: 1.4, footHeight: .18, walkSpeed: 1.45, photoPause: 1.2, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: 0.02, gsize: 1.38, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
+const DEFAULTS = { background: 80, deskX: 2.6, deskDepth: -1.1, radius: 28, view: 0, frame: 1, depth: 0.92, haze: 1.05, overall: 1.11, len: 0.54, density: 1.69, base: 0.5, lav: 0.5, wind: 1, gust: 1, subject: 1.9, routeX: -125, routeDepth: 1.4, footHeight: .18, walkSpeed: 1.45, walkSeconds: 4, photoPause: 1.2, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: 0.02, gsize: 1.38, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
 // people who ask their system for less motion get a gentle breeze by default
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (REDUCED) DEFAULTS.wind = 0.35;
@@ -1215,7 +1215,7 @@ function figureColumn(step) {
   return VIEWPORT.xL + span*.855 + (P.routeX-425) + step;
 }
 function updateFigure(dt) {
-  const s=walker.tick(fetchGame.throwing ? 0 : dt,P.walkSpeed,P.photoPause);
+  const s=walker.tick(fetchGame.throwing ? 0 : dt,P.walkSpeed,P.photoPause,P.walkSeconds);
   if(fetchGame.throwing){s.pose=s.next=fetchGame.throwPose;s.blend=s.bob=s.flash=0;}
   // Follow the visible rear silhouette in this screen column.
   const ray=(figureColumn(s.x)-CX0)/F0;
