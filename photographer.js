@@ -1,54 +1,65 @@
-// Distances use reference-banner pixels. One landing advances one stride length.
+// Distances use reference-banner pixels.
 export function createWalker(reduced) {
-  const stepLength = 18, nominalCadence = .72;
-  let stepCount = 0, legSeconds = 0, end = 0, firstLeg = true;
-  let phase = 'approach', elapsed = 0, direction = 1, start = 0, x = 0;
-  const state = { x, direction, pose: 4, next: 4, blend: 0, bob: 0, flash: 0, phase };
-  function enter(name) { phase = name; elapsed = 0; start = x; }
-  let resume=null;
+  const stepLength = 18;
+  const secondsPerStep = .72;
+  const photoTimes = [0, .16, .38, .66, 1.05, 1.29, 1.56, 1.78];
+  const photoPoses = [4, 4, 5, 6, 6, 5, 4, 4];
+  let route = 0;
+  let gait = 1;
+  let photoTime = null;
+  const state = { x: 0, direction: 1, pose: 4, next: 4, blend: 0, bob: 0, flash: 0, phase: 'travel' };
+
   function photo() {
-    if(phase!=='photo'){resume={phase,elapsed,start};enter('photo');}
-    else elapsed=0;
+    photoTime = 0;
   }
-  function tick(dt,speed=1,pause=.22,walkDistance=144) {
-    if (reduced && phase !== 'photo') return state;
-    elapsed += dt;
-    let pose = 4, next = 4, blend = 0, bob = 0, flash = 0;
-    if (phase === 'approach' || phase === 'travel') {
-      if (!stepCount) {
-        end = direction * walkDistance / 2;
-        if (firstLeg) { start = -end; firstLeg = false; }
-        const distance = Math.abs(end - start);
-        stepCount = Math.max(1, Math.round(distance / stepLength));
-        legSeconds = distance * nominalCadence / (stepLength * speed);
-      }
-      const progress = Math.min(1, elapsed / legSeconds);
-      const steps = progress * stepCount;
-      const footfall = steps % 1;
-      // A single exposure for each contact and passing pose avoids double legs.
-      pose = Math.floor(2 * steps + .000001) % 4;
-      next = pose;
-      const transfer = footfall - .10 * Math.sin(2 * Math.PI * footfall) / (2 * Math.PI);
-      x = start + (end - start) * (Math.floor(steps) + transfer) / stepCount;
-      bob = .022 * Math.sin(Math.PI * footfall) ** 2;
-      if (progress === 1) { x = end; stepCount = 0; enter('photo'); }
-    } else if (phase === 'photo') {
-      const times=[0,.16,.38,.66,1.05,1.29,1.56,1.78], poses=[4,4,5,6,6,5,4,4];
-      let i=0; while(i<times.length-2 && elapsed>times[i+1]) i++;
-      pose=poses[i]; next=poses[i+1]; blend=Math.min(1,(elapsed-times[i])/(times[i+1]-times[i]));
-      flash=reduced ? 0 : Math.max(0,1-Math.abs(elapsed-.89)/.095);
-      if(elapsed>=1.56+pause){
-        if(resume){({phase,elapsed,start}=resume); resume=null;}
-        else enter('turn');
-      }
-    } else if(phase==='turn') {
-      pose=elapsed<.12 ? 4 : 7; next=pose;
-      if(elapsed>=.5){direction *= -1; enter('approach');}
+
+  function tick(dt, speed = 1, pause = .22, walkDistance = 144) {
+    if (photoTime !== null) {
+      photoTime += dt;
+      let segment = 0;
+      while (segment < photoTimes.length - 2 && photoTime > photoTimes[segment + 1]) segment++;
+      const fraction = Math.min(1, (photoTime - photoTimes[segment]) / (photoTimes[segment + 1] - photoTimes[segment]));
+      Object.assign(state, {
+        pose: photoPoses[segment],
+        next: photoPoses[segment + 1],
+        blend: fraction * fraction * (3 - 2 * fraction),
+        flash: reduced ? 0 : Math.max(0, 1 - Math.abs(photoTime - .89) / .095),
+        phase: 'photo',
+      });
+      if (photoTime < 1.56 + pause) return state;
+      photoTime = null;
+      dt = 0;
     }
-    Object.assign(state,{x,direction,pose,next,blend:blend*blend*(3-2*blend),bob,flash,phase});
+
+    state.phase = 'travel';
+    state.flash = 0;
+    if (reduced) return Object.assign(state, { pose: 4, next: 4, blend: 0 });
+
+    const steps = dt * speed / secondsPerStep;
+    const distance = Math.max(1, walkDistance);
+    route = (route + steps * stepLength / distance) % 2;
+    const direction = route < 1 ? 1 : -1;
+    const legProgress = direction === 1 ? route : 2 - route;
+
+    // Ease through the change of direction, then maintain a steady pace across the ridge.
+    const turnaround = .11;
+    const edge = Math.min(legProgress, 1 - legProgress);
+    const easedEdge = edge < turnaround ? edge * edge / (2 * turnaround) : edge - turnaround / 2;
+    const travel = legProgress <= .5 ? easedEdge / (1 - turnaround) : 1 - easedEdge / (1 - turnaround);
+
+    gait = (gait + steps * 2) % 4;
+    const pose = Math.floor(gait);
+    Object.assign(state, {
+      x: (travel - .5) * walkDistance,
+      direction,
+      pose,
+      next: (pose + 1) % 4,
+      blend: gait - pose,
+    });
     return state;
   }
-  return {tick,photo,state};
+
+  return { tick, photo, state };
 }
 export function createFigure(gl,program) {
   const shader=program(`#version 300 es
@@ -60,9 +71,58 @@ export function createFigure(gl,program) {
     }`,`#version 300 es
     precision highp float;in vec2 uv;out vec4 color;
     uniform sampler2D atlas;uniform vec4 frames;uniform vec3 lighting;uniform float facing,flash,depth;
-    vec4 samplePose(float k){return texture(atlas,(vec2(mod(k,4.),floor(k/4.))+uv)/vec2(4.,4.),-.45);}
+    vec4 samplePose(float k, vec2 point) {
+      if (any(lessThan(point, vec2(0.))) || any(greaterThan(point, vec2(1.)))) return vec4(0.);
+      return texture(atlas, (vec2(mod(k,4.), floor(k/4.)) + point) / 4., -.45);
+    }
+
+    // Each pair describes the near and far legs of one walk pose, measured on the atlas.
+    const vec2 hip[8] = vec2[8](
+      vec2(.50,.47), vec2(.49,.47), vec2(.50,.47), vec2(.49,.47),
+      vec2(.50,.47), vec2(.51,.47), vec2(.50,.47), vec2(.50,.47));
+    const vec2 knee[8] = vec2[8](
+      vec2(.62,.69), vec2(.34,.69), vec2(.59,.68), vec2(.46,.72),
+      vec2(.36,.69), vec2(.62,.69), vec2(.58,.65), vec2(.49,.71));
+    const vec2 ankle[8] = vec2[8](
+      vec2(.74,.92), vec2(.26,.92), vec2(.56,.93), vec2(.31,.88),
+      vec2(.25,.91), vec2(.75,.91), vec2(.53,.91), vec2(.45,.91));
+
+    vec3 mapSegment(vec2 p, vec2 fromA, vec2 fromB, vec2 toA, vec2 toB) {
+      vec2 fromAxis = fromB - fromA;
+      vec2 fromNormal = normalize(vec2(-fromAxis.y, fromAxis.x));
+      vec2 toAxis = toB - toA;
+      vec2 toNormal = normalize(vec2(-toAxis.y, toAxis.x));
+      float along = dot(p - fromA, fromAxis) / dot(fromAxis, fromAxis);
+      vec2 mapped = toA + along * toAxis + dot(p - fromA, fromNormal) * toNormal;
+      float distanceToBone = length(p - mix(fromA, fromB, clamp(along, 0., 1.)));
+      return vec3(mapped, distanceToBone);
+    }
+
+    vec3 mapLeg(vec2 p, int src, int next, float t) {
+      vec2 h = mix(hip[src], hip[next], t);
+      vec2 k = mix(knee[src], knee[next], t);
+      vec2 a = mix(ankle[src], ankle[next], t);
+      vec3 thigh = mapSegment(p, h, k, hip[src], knee[src]);
+      vec3 shin = mapSegment(p, k, a, knee[src], ankle[src]);
+      float shinWeight = smoothstep(k.y - .045, k.y + .045, p.y);
+      return vec3(mix(thigh.xy, shin.xy, shinWeight), min(thigh.z, shin.z));
+    }
+
+    vec2 walkPoint(int src, int next, float t) {
+      vec3 nearLeg = mapLeg(uv, src * 2, next * 2, t);
+      vec3 farLeg = mapLeg(uv, src * 2 + 1, next * 2 + 1, t);
+      float useNear = smoothstep(-.018, .018, farLeg.z - nearLeg.z);
+      float weight = smoothstep(.46, .60, uv.y) * (1. - smoothstep(.09, .17, min(nearLeg.z, farLeg.z)));
+      return mix(uv, mix(farLeg.xy, nearLeg.xy, useNear), weight);
+    }
+
     void main(){
-      vec4 a=samplePose(frames.x),b=samplePose(frames.y);float alpha=mix(a.a,b.a,frames.z);
+      vec2 pointA = uv, pointB = uv;
+      if (frames.x < 4. && frames.y < 4. && frames.z > 0.) {
+        pointA = walkPoint(int(frames.x), int(frames.y), frames.z);
+        pointB = walkPoint(int(frames.y), int(frames.x), 1. - frames.z);
+      }
+      vec4 a=samplePose(frames.x,pointA),b=samplePose(frames.y,pointB);float alpha=mix(a.a,b.a,frames.z);
       vec3 rgb=mix(a.rgb*a.a,b.rgb*b.a,frames.z)/max(.001,alpha);
       vec2 delta=uv-vec2(.68,.135);
       float spark=flash*2.6*max(exp(-length(delta)*43.),max(exp(-abs(delta.x)*380.-abs(delta.y)*30.),exp(-abs(delta.y)*380.-abs(delta.x)*30.)));
