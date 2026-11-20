@@ -21,7 +21,7 @@ export function grassBrush(canvas, gl) {
     active=true;
   }
   function release() { active=false; }
-  canvas.style.touchAction='none';
+  canvas.style.touchAction = 'pan-y pinch-zoom';
   canvas.addEventListener('pointermove', contact);
   canvas.addEventListener('pointerdown', contact);
   canvas.addEventListener('pointerleave', release);

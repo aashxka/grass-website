@@ -9,15 +9,20 @@
 .homepage {
   --page-edge: 32px;
   --page-top: calc(var(--page-edge) + env(safe-area-inset-top, 0px));
-  padding: var(--page-top)
-    calc(var(--page-edge) + env(safe-area-inset-right, 0px))
-    32px calc(var(--page-edge) + env(safe-area-inset-left, 0px));
   position: relative;
   z-index: 6;
   pointer-events: none;
   color: #1b1b1b;
   font-family: "Stevie Sans Book", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.home-scroll {
+  display: flow-root;
+  padding: var(--page-top)
+    calc(var(--page-edge) + env(safe-area-inset-right, 0px))
+    var(--landscape-runway, 54vh) calc(var(--page-edge) + env(safe-area-inset-left, 0px));
+  overflow-anchor: none;
 }
 
 .homepage .nav,
@@ -28,7 +33,8 @@
 }
 
 .homepage .nav {
-  position: absolute;
+  position: fixed;
+  z-index: 2;
   top: var(--page-top);
   right: calc(var(--page-edge) + env(safe-area-inset-right, 0px));
 }
@@ -202,16 +208,8 @@
 }
 
 @media (max-width: 720px) {
-  .homepage .nav {
-    position: relative;
-    inset: auto;
-    margin-inline-start: auto;
-  }
-
-  .intro {
-    --default-text-width: min(100%, 26rem);
-    margin-top: calc(28px + var(--intro-offset, 0px));
-  }
+  .home-scroll { padding-top: calc(var(--page-top) + 76px); }
+  .intro { --default-text-width: min(100%, 26rem); }
 }
 
 /* Keep the tuning panel below the navigation, including when every group is expanded. */

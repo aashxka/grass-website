@@ -10,9 +10,6 @@
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/bricolage-grotesque-regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="homepage.css">
-<script>
-if (location.hash === "#work") document.documentElement.dataset.view = "work";
-</script>
 <style>
   @font-face { font-family: "Stevie Sans Book"; src: url("fonts/stevie-sans-book.woff") format("woff"); font-weight: 400; font-style: normal; font-display: block; }
   :root {
@@ -88,31 +85,31 @@ if (location.hash === "#work") document.documentElement.dataset.view = "work";
     position: fixed;
     inset: 0;
     pointer-events: none;
-    transform: translateY(0);
+    transform: translate3d(0, var(--landscape-drop, 0px), 0);
+    opacity: var(--landscape-opacity, 1);
   }
   .landscape .stage { pointer-events: auto; }
+  .landscape[inert] { visibility: hidden; }
   .landscape[inert] .stage { pointer-events: none; }
 
   .work-view {
     --work-edge: clamp(20px, 4vw, 32px);
-    position: fixed;
-    inset: 0;
+    min-height: 100dvh;
     display: grid;
     align-content: safe center;
-    overflow: auto;
     padding-block: calc(96px + env(safe-area-inset-top, 0px)) calc(96px + env(safe-area-inset-bottom, 0px));
     color: #1b1b1b;
     font: 400 clamp(1rem, 1.2vw, 1.25rem)/1.35 "Stevie Sans Book", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(20px);
   }
 
   .work-view:not([inert]) { pointer-events: auto; }
+  .work-view:focus { outline: none; }
 
   .work-rail {
     display: grid;
+    opacity: var(--work-reveal, 1);
+    transform: translate3d(0, var(--work-rise, 0px), 0);
     grid-auto-flow: column;
     grid-auto-columns: clamp(270px, 35.25vw, 780px);
     gap: 8px;
@@ -131,23 +128,8 @@ if (location.hash === "#work") document.documentElement.dataset.view = "work";
   .work-card p { margin: 0; color: #646464; }
   .work-card-arrow { width: 1em; height: 1em; flex: none; }
 
-  :root[data-view="work"] .landscape { transform: translateY(100dvh); visibility: hidden; }
-  :root[data-view="work"] .intro { pointer-events: none; }
-  :root[data-view="work"] .intro { transform: translateY(calc(-100% - 144px)); visibility: hidden; }
-  :root[data-view="work"] .work-view { transform: translateY(0); opacity: 1; visibility: visible; }
-
-  :root.views-ready {
-    --work-slide: 480ms cubic-bezier(.25, .1, .25, 1);
-  }
-  .views-ready .landscape { transition: transform var(--work-slide), visibility var(--work-slide); }
-  .views-ready .intro { transition: transform var(--work-slide), visibility var(--work-slide); }
-  .views-ready .work-view { transition: transform var(--work-slide), opacity 320ms ease, visibility 320ms ease; }
-
   @media (max-width: 600px) {
     .work-rail { grid-auto-columns: 82vw; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .views-ready .landscape, .views-ready .intro, .views-ready .work-view { transition: none; }
   }
 
   /* less motion: no sliding, scaling or pressing; fades stay so state changes still read */
@@ -176,6 +158,7 @@ if (location.hash === "#work") document.documentElement.dataset.view = "work";
   <a href="#photos" data-label="Photos">Photos</a>
 </nav>
 <main>
+<div class="home-scroll" id="home">
 <section class="intro" aria-labelledby="intro-title">
   <h1 id="intro-title">aashika ashok</h1>
   <p>I like making digital things that make life a little simpler, look considered, and leave people with a quiet “wait, that was nice, give me more.”</p>
@@ -211,7 +194,8 @@ if (location.hash === "#work") document.documentElement.dataset.view = "work";
     <span class="copy-status" role="status"></span>
   </div>
 </section>
-<section class="work-view" id="work-view" aria-label="Work" inert>
+</div>
+<section class="work-view" id="work" aria-label="Work" tabindex="-1">
   <div class="work-rail" role="region" aria-label="Project previews" tabindex="0">
     <article class="work-card" style="--cover: #050505">
       <div class="work-card-cover" aria-hidden="true"></div>
@@ -238,65 +222,8 @@ if (location.hash === "#work") document.documentElement.dataset.view = "work";
 </section>
 </main>
 </div>
+<script type="module" src="page-scroll.js"></script>
 <script>
-// Nav: the white thumb slides to the chosen item; the URL hash keeps the choice (back/forward work too).
-(() => {
-  const nav = document.getElementById("nav");
-  const thumb = nav.querySelector(".nav-thumb");
-  const links = [...nav.querySelectorAll("a")];
-  const workLink = links[0];
-  const root = document.documentElement;
-  const work = document.getElementById("work-view");
-  const landscape = document.querySelector(".landscape");
-  const intro = document.querySelector(".intro");
-  const isWork = () => location.hash === "#work";
-  let current = null;
-  const chosen = () => links.find(a => a.hash === location.hash) || links[0];
-  function place(animate) {
-    if (!current) return;
-    if (!animate) thumb.style.transition = "none";
-    thumb.style.width = current.offsetWidth + "px";
-    thumb.style.transform = `translateX(${current.offsetLeft}px)`;
-    if (!animate) { void thumb.offsetWidth; thumb.style.transition = ""; }
-  }
-  function select(a, animate) {
-    if (current) current.removeAttribute("aria-current");
-    a.setAttribute("aria-current", "page");
-    current = a;
-    place(animate);
-  }
-  function syncView(animate) {
-    const showWork = isWork();
-    if (!showWork && work.contains(document.activeElement)) workLink.focus();
-    root.dataset.view = showWork ? "work" : "home";
-    work.inert = !showWork;
-    landscape.inert = intro.inert = showWork;
-    workLink.setAttribute("aria-expanded", String(showWork));
-    select(chosen(), animate);
-  }
-  function closeWork() {
-    history.pushState(null, "", location.pathname + location.search);
-    syncView(true);
-  }
-  workLink.setAttribute("aria-controls", work.id);
-  workLink.addEventListener("click", event => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    if (isWork()) {
-      event.preventDefault();
-      closeWork();
-    }
-  });
-  addEventListener("keydown", event => {
-    if (!event.defaultPrevented && event.key === "Escape" && isWork()) closeWork();
-  });
-  syncView(false);
-  addEventListener("hashchange", () => syncView(true));
-  requestAnimationFrame(() => root.classList.add("views-ready"));
-  new ResizeObserver(() => place(false)).observe(nav);
-  // show it once Stevie Sans is in (no fallback-font flash), or after 1.5 s regardless
-  const fontIn = document.fonts ? document.fonts.load('14px "Stevie Sans Book"') : Promise.resolve();
-  Promise.race([fontIn, new Promise(r => setTimeout(r, 1500))]).catch(() => {}).then(() => { place(false); nav.classList.add("ready"); });
-})();
 // Socials: hover and focus are plain CSS; the script only copies the email.
 (() => {
   const bar = document.querySelector(".socials");

@@ -11,6 +11,7 @@
 //   Colours     all 14 pickers, reset colours
 //   Reset       back to the tuned defaults (colours stay, as in grass-hills)
 import { createDialKit, createDialRoot } from "./vendor/dialkit/index.js";
+import { motionDials, portfolioMotion } from "./page-scroll.js";
 
 const VIEW = [{ value: "0", label: "Scene" }, { value: "1", label: "Terrain" }];
 const FRAME = [{ value: "0", label: "Banner" }, { value: "1", label: "Hero 16:9" }];
@@ -96,8 +97,11 @@ export async function mountHomepageTune() {
       else intro.style.setProperty(property, value + unit);
     }
   }
-  apply(kit.getValues());
   kit.subscribe(apply);
+  createDialKit("Scroll motion", motionDials, {
+    id: "portfolio-scroll-motion",
+    persist: { key: "portfolio-scroll-motion" },
+  }).subscribe(values => portfolioMotion.dispatchEvent(new CustomEvent("change", { detail: values })));
 }
 
 export async function mountTune(h,game) {
