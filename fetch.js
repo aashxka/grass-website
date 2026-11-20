@@ -39,8 +39,7 @@ export function createFetch(stage,reduced,gl,program) {
     precision highp float;uniform sampler2D sprite;uniform float depth;
     in vec2 uv;out vec4 color;
     void main(){vec4 texel=texture(sprite,uv);
-      float threshold=fract(dot(floor(gl_FragCoord.xy),vec2(.75487767,.56984029)));
-      if(texel.a<=(max(.008,threshold)))discard;
+      if(texel.a < .12) discard;
       color=vec4(texel.rgb,log(depth/4.)/log(60.));}
   `);
   function render(pv,w,h){
