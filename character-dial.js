@@ -1,16 +1,6 @@
-import {createDialKit,createDialRoot} from './vendor/dialkit/index.js';
+import {createDialKit} from './vendor/dialkit/index.js';
 import {fetchControls} from './fetch.js';
 export async function mountCharacterDial(scene,game) {
-  const css=document.createElement('link');
-  css.rel='stylesheet';
-  css.href='./vendor/dialkit/styles.css';
-  const styled = await new Promise(resolve => {
-    css.onload = () => resolve(true);
-    css.onerror = () => resolve(false);
-    document.head.append(css);
-  });
-  if (!styled) return;
-  createDialRoot({position:'top-right',theme:'system',defaultOpen:true});
   const controls = {
     'Character size': ['subject', .5, 3, .05],
     'Route left / right (px)': ['routeX', -150, 1000, 5],
@@ -24,7 +14,7 @@ export async function mountCharacterDial(scene,game) {
     config[label] = [scene[key],min,max,step];
   }
   const kit=createDialKit('Photographer',config,{
-    id:'photographer',persist:{key:'ridge-photographer-size-v3'}
+    id:'photographer',persist:{key:'ridge-photographer-size-v4'}
   });
   function apply(values) {
     for (const [label,[key]] of Object.entries(controls)) {
@@ -34,7 +24,7 @@ export async function mountCharacterDial(scene,game) {
   apply(kit.getValues());
   kit.subscribe(apply);
   const fetchKit=createDialKit('Fetch',{Dog:{...fetchControls.Dog},Ball:{...fetchControls.Ball},Replay:{type:'action',label:'Replay opening throw'}},{
-    id:'greyhound-fetch',persist:{key:'greyhound-fetch-v2'},onAction:()=>game.replay()
+    id:'greyhound-fetch',persist:{key:'greyhound-fetch-v3'},onAction:()=>game.replay()
   });
   function applyFetch(values){
     Object.assign(game.settings.Dog,values.Dog);

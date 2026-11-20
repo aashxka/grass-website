@@ -237,6 +237,7 @@ const PATH_PX = [[760, 19, 110], [870, 17, 110], [980, 15.6, 100], [1090, 14.6, 
 // shorter grass between her and the camera, so her chair shows like in the banner (screen x, depth, radius px)
 const CLEAR_PX = [[1170, 15.5, 150], [1160, 13, 150], [1150, 11, 150], [1140, 9, 140], [1130, 7.5, 140]];
 function clearing(x, d) {
+  if (!showDesk) return 0;
   let c = 0;
   for (const [sx, pd, rp] of CLEAR_PX) {
     const px = (sx - CX0) * pd / F0, pr = rp * pd / F0, dx = x - px, dd = (d - pd) * 0.5;
@@ -266,7 +267,7 @@ const hiddenLayers = new Set();
 // Her tuned panel, copied from ?tune (2026-11-19): Scene, Hero 16:9, Rounded mounds at height 0.92, desk hidden
 // (its place kept: 2.6 m right, 1.1 m nearer, 2 cm up, size 1.38), haze 1.05, impact radius 28, grass length 0.54,
 // density 169%, lavender 0.5, darker blade root/lower/mid and tip highlight #577214 (PAL_DEFAULT).
-const DEFAULTS = { background: 80, deskX: 2.6, deskDepth: -1.1, radius: 28, view: 0, frame: 1, depth: 0.92, haze: 1.05, overall: 1.11, len: 0.54, density: 1.69, base: 0.5, lav: 0.5, wind: 1, gust: 1, subject: 1.2, routeX: 425, routeDepth: 1.4, footHeight: .05, walkSpeed: .8, photoPause: 1.2, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: 0.02, gsize: 1.38, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
+const DEFAULTS = { background: 80, deskX: 2.6, deskDepth: -1.1, radius: 28, view: 0, frame: 1, depth: 0.92, haze: 1.05, overall: 1.11, len: 0.54, density: 1.69, base: 0.5, lav: 0.5, wind: 1, gust: 1, subject: 1.2, routeX: 425, routeDepth: 1.4, footHeight: .1, walkSpeed: 1.35, photoPause: 1.2, angle: -31, mugX: 0.13, mugZ: 0, mugSize: 1, monitor: 1.4, lift: 0.02, gsize: 1.38, dof: 0, glow: 1, hills: 0, hillW: 1.56, humps: 1 };
 // people who ask their system for less motion get a gentle breeze by default
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (REDUCED) DEFAULTS.wind = 0.35;
@@ -308,7 +309,7 @@ function pathMask(x, d) {
 // The distant mounds she circled on the skyline are left out: every mound beyond minD metres whose
 // centre lands in that column range (banner px), so no smaller mound shows through behind it.
 // Left edge, the centre dip (plus the pale far sliver her pen line points at), right edge.
-const HIDE_FAR = [[-700, 250, 50], [780, 1090, 62], [1790, 2700, 50]];
+const HIDE_FAR = [[-700, 1490, 40], [1790, 2700, 50]];
 const HIDE = { far: true };   // "Hide circled hills" in the tune panel
 function hash2(i, j) { let h = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
 function moundsH(x, d) {
@@ -382,7 +383,7 @@ function buildHeightmap() {
       const x = HM.x0 + (HM.x1 - HM.x0) * (i + 0.5) / w;
       H[j * w + i] = terrainH(x, d);
       let l = 0;
-      if (P.hills !== 2) for (const [sx, pd, rp] of PATH_PX) {
+      if (showDesk && P.hills !== 2) for (const [sx, pd, rp] of PATH_PX) {
         const px = (sx - CX0) * pd / F0, pr = rp * pd / F0;
         const dx = x - px, dd = (d - pd) * 0.45;
         l = Math.max(l, Math.exp(-(dx * dx + dd * dd) / (pr * pr)));
@@ -1137,7 +1138,13 @@ function resize() {
   updateCamera();
 }
 new ResizeObserver(resize).observe(stage);
-matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener?.("change", resize);
+function watchPixelDensity(){
+  matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change",()=>{
+    resize();
+    watchPixelDensity();
+  },{once:true});
+}
+watchPixelDensity();
 
 // ---------------------------------------------------------------------------
 function setCommon(u) {
@@ -1203,14 +1210,18 @@ canvas.addEventListener("click", event => {
   const sy=(event.clientY-rect.top)/scale+VIEWPORT.yTop;
   const foot=HY+(HC-footprint.y-P.footHeight)*F0/footprint.d;
   const height=P.subject*1.78*F0/footprint.d;
-  if(Math.abs(sx-(walker.state.x+P.routeX))<height*.35 && sy>foot-height && sy<foot+4) walker.photo();
+  if(Math.abs(sx-(figureColumn(walker.state.x)))<height*.35 && sy>foot-height && sy<foot+4) walker.photo();
 });
 const footprint = {x:0,d:34,y:0,light:0,rim:0};
+function figureColumn(step) {
+  const span=W/VIEWPORT.s;
+  return VIEWPORT.xL + span*.855 + (P.routeX-425) + step;
+}
 function updateFigure(dt) {
   const s=walker.tick(fetchGame.throwing ? 0 : dt,P.walkSpeed,P.photoPause);
   if(fetchGame.throwing){s.pose=s.next=fetchGame.throwPose;s.blend=s.bob=s.flash=0;}
-  const d=interp([[10,34.8],[130,33.5],[340,33.7],[495,34.1],[626,32.9]],s.x)+P.routeDepth;
-  const x=(s.x+P.routeX-CX0)*d/F0;
+  const d=32.9+P.routeDepth;
+  const x=(figureColumn(s.x)-CX0)*d/F0;
   const y=terrainH(x,d)*P.depth;
   const gx=(x-HM.x0)/(HM.x1-HM.x0)*HM.w-.5;
   const gy=(Math.log(d)-HM.ld0)/(HM.ld1-HM.ld0)*HM.h-.5;
@@ -1231,9 +1242,9 @@ function updateFetch(dt){
     return {worldX,d,light:hmData[(j*HM.w+i)*4+3],x:(sx-VIEWPORT.xL)*scale,y:(HY+(HC-height)*F0/d-VIEWPORT.yTop)*scale,ppm:F0*scale/d};
   }
   const hp=F0*scale/footprint.d;
-  const hand={ppm:hp,x:(walker.state.x+P.routeX-VIEWPORT.xL)*scale+.61*P.subject*hp,
+  const hand={ppm:hp,x:(figureColumn(walker.state.x)-VIEWPORT.xL)*scale+.61*P.subject*hp,
     y:(HY-VIEWPORT.yTop)*scale+(HC-footprint.y-P.footHeight-1.15*P.subject)*hp};
-  fetchGame.draw(dt,{scale,width:W/dpr,height:H/dpr,left:VIEWPORT.xL,ridge},hand);
+  fetchGame.draw(dt,{scale,width:W/dpr,height:H/dpr,left:VIEWPORT.xL,pixelRatio:dpr,ridge},hand);
 }
 function render() {
   // 1) wind field
@@ -1425,14 +1436,14 @@ requestAnimationFrame(() => {
       if (debug) fpsEl.textContent = `${Math.round(fps)} fps · ${W}×${H} · ${AIR.live ? AIR.reading.speed + " m/s Seattle" : "tuned breeze"}`;
       // only a genuinely struggling device (under 20 fps for 4 s while visible) steps down, once
       slowSeconds = document.visibilityState === "visible" && document.hasFocus() && fps < 20 ? slowSeconds + 1 : 0;
-      if (slowSeconds >= 4 && densityCap > 1.5 && (window.devicePixelRatio || 1) > 1.5) { densityCap = 1.5; resize(); }
+      if (slowSeconds >= 4 && densityCap > 2 && (window.devicePixelRatio || 1) > 1.5) { densityCap = 2; resize(); }
       frames = 0; fpsT = now;
     }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  if (!qs.has("tune")) import("./character-dial.js").then(m=>m.mountCharacterDial(P,fetchGame));
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js").then(m => m.mountTune(tuneApi)).catch(err => console.warn("Tune panel could not load", err));
+
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {

@@ -1,30 +1,37 @@
 // Distances use reference-banner pixels. One landing advances one stride length.
 export function createWalker(reduced) {
-  const left = 10, right = 626, stride = (right-left)/18, cadence = .57;
+  const left = -18, right = 18, stride = (right-left)/2, cadence = .57;
   let phase = 'approach', elapsed = 0, direction = 1, start = left, x = left, leading = 0;
   const state = { x, direction, pose: 4, next: 4, blend: 0, bob: 0, flash: 0, phase };
   function enter(name) { phase = name; elapsed = 0; start = x; }
-  function photo() { if (phase === 'approach' || phase === 'travel') enter('photo'); }
+  let completedLegs=0, resume=null;
+  function photo() {
+    if(phase!=='photo'){resume={phase,elapsed,start};enter('photo');}
+    else elapsed=0;
+  }
   function tick(dt,speed=1,pause=.22) {
     if (reduced && phase !== 'photo') return state;
     elapsed += dt * ((phase === 'approach' || phase === 'travel') ? speed : 1);
     let pose = 4, next = 4, blend = 0, bob = 0, flash = 0;
     if (phase === 'approach' || phase === 'travel') {
-      const end = Math.max(left,Math.min(right,start + direction * stride * 3));
+      const end = Math.max(left,Math.min(right,start + direction * stride * 2));
       const steps = Math.abs(end-start)/stride;
       const progress = Math.min(steps, elapsed/cadence);
       x = start + direction * stride * progress;
       const frame = leading + progress * 2;
-      pose = Math.floor(frame) % 4; next = pose;
+      pose = Math.floor(frame) % 4; next = (pose+1)%4; blend=Math.max(0,(frame%1-.78)/.22);
       bob = .012 * Math.sin(Math.PI*progress)**2;
-      if (progress >= steps) { x=end; leading=(leading+6)%4; enter('photo'); }
+      if (progress >= steps) { x=end; leading=(leading+4)%4; enter('photo'); }
     } else if (phase === 'photo') {
       const times=[0,.16,.38,.66,1.05,1.29,1.56,1.78], poses=[4,4,5,6,6,5,4,4];
       let i=0; while(i<times.length-2 && elapsed>times[i+1]) i++;
       pose=poses[i]; next=poses[i+1]; blend=Math.min(1,(elapsed-times[i])/(times[i+1]-times[i]));
       flash=reduced ? 0 : Math.max(0,1-Math.abs(elapsed-.89)/.095);
-      if(elapsed>=1.56+pause) enter((direction>0 && x>=right-.01)||(direction<0 && x<=left+.01) ? 'turn' : 'travel');
-    } else {
+      if(elapsed>=1.56+pause){
+        if(resume){({phase,elapsed,start}=resume); resume=null;}
+        else enter(++completedLegs===2?'idle':'turn');
+      }
+    } else if(phase==='turn') {
       pose=elapsed<.12 ? 4 : 7; next=pose;
       if(elapsed>=.5){direction *= -1; enter('approach');}
     }
