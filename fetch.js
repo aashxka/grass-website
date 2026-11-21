@@ -93,7 +93,7 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
   const poseSize=[[341,180],[368,151],[358,170],[323,160],[343,192],[305,222],[296,216],[231,220],[227,226],[197,228],[198,241],[175,264],[211,236],[236,214],[218,218],[350,201],[258,155],[279,154],[273,192],[218,198],[129,227],[127,228],[114,278],[113,248]];
   const loaded=i=>images[i]?.naturalWidth>0;
   let phase='opening',time=0,run=0,from=0,to=1,pos=0,first=true,release,previousBall;
-  let throwAge=reduced?null:0;
+  let throwAge=reduced?null:-throwTiming.openingDelay;
   const ballContact=new Float32Array(3);
   const paws=new Float32Array(24); let lastStamp=-1;
   const enter=p=>{phase=p;time=0};
@@ -182,7 +182,7 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
     let radius=atEnd.ppm*.105*B.Size;
     const rest={x:atEnd.x+direction*atEnd.ppm*B['Beside dog (m)'],y:atEnd.y-radius};
     let point=rest,angle=0;
-    if(phase==='opening')point=handAt(throwAge);
+    if(phase==='opening')point=handAt(Math.max(0,throwAge));
     // Use the same raised muzzle at the flight endpoint and through the hold.
     const catchFrame=poseSize[18],catchScale=atEnd.ppm*D.Size*.00385;
     const muzzle={
@@ -246,9 +246,9 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
       ink.restore();
     }
     ink.save();ink.filter='brightness('+(.87+.13*atEnd.light)+')';
-    ball(pad,pad,radius,angle);
+    if(phase!=='opening'||throwAge>=0)ball(pad,pad,radius,angle);
     ink.restore();previousBall=point;
     button.hidden=phase!=='wait';button.style.left=point.x+'px';button.style.top=point.y+'px';
   }
-  return {settings,paws,ballContact,draw,render,replay,get throwAge(){return throwAge}};
+  return {settings,paws,ballContact,draw,render,replay,get throwAge(){return throwAge<0?null:throwAge}};
 }

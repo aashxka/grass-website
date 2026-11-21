@@ -8,6 +8,7 @@ const throwFrames = [
   { time: 1.60, pose: 4, handX: .509, handY: .546 },
 ];
 export const throwTiming = {
+  openingDelay: 1.5,
   release: throwFrames[3].time,
   end: throwFrames.at(-1).time,
 };
