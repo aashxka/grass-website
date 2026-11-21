@@ -34,13 +34,13 @@
   }
   body.reshaping .status { opacity: 1; transform: none; }
 
-  /* Top nav: segmented pill from her reference (Stevie Sans Book 16, #F0F0F0 track with inner shadows, raised white thumb) */
+  /* Top nav: segmented pill with a raised white thumb. */
   .nav {
     position: relative; width: fit-content; max-width: 100%;
     display: flex; gap: 6px; padding: 5px; border-radius: 999px;
     background: #f0f0f0;
     box-shadow: inset 0 1px 1px #f7f7f7, inset 0 3px 3px #e0e0e0;
-    font: 400 16px/1 "Stevie Sans Book", system-ui, -apple-system, sans-serif;
+    font: 400 clamp(.8125rem, .6875rem + .625vw, .875rem)/1 "Stevie Sans Book", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     -webkit-user-select: none; user-select: none;   /* controls, not copy: a drag never highlights a label */
     opacity: 0; transition: opacity 300ms var(--ease-out);
