@@ -4,7 +4,7 @@ export function createPhotographer(reduced) {
   const photoTimes = [0, 0.16, 0.38, 0.66, 1.05, 1.29, 1.56];
   const photoPoses = [4, 4, 5, 6, 6, 5, 4];
   const clipDuration = photoTimes[photoTimes.length - 1];
-  const state = { direction: -1, pose: 4, next: 4, blend: 0, flash: 0 };
+  const state = { direction: 1, pose: 4, next: 4, blend: 0, flash: 0 };
   let clock = 0;
   let startedAt = -Infinity;
   // Start raising the camera early so the first shutter fires at five seconds.

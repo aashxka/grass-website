@@ -257,7 +257,7 @@ if (tune !== null && tune !== "0") {
 
 <script type="module">
 import { createFetch } from "./fetch.js?v=stationary1";
-import { createPhotographer, createFigure } from "./photographer.js?v=stationary1";
+import { createPhotographer, createFigure } from "./photographer.js?v=right-facing";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
 // ============================================================================
@@ -1270,7 +1270,9 @@ canvas.addEventListener("click", event => {
 const footprint = {x:0,d:34,y:0,light:0,rim:0};
 function figureColumn() {
   const span=W/VIEWPORT.s;
-  return VIEWPORT.xL + span*.855 + (P.routeX-425);
+  // Anchor to the left crest and keep her in view when the banner crops it out.
+  const leftCrest = Math.max(400, VIEWPORT.xL + span * .18);
+  return leftCrest + (P.routeX - DEFAULTS.routeX);
 }
 function updateFigure(dt) {
   photographer.tick(dt, P.photoPause);
