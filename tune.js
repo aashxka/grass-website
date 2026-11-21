@@ -78,10 +78,10 @@ export async function mountHomepageTune() {
   await getDialRoot();
   const intro = document.querySelector(".intro");
   const sliders = [
-    ["Text width (%)", "--text-width", 32, 20, 100, "%"],
+    ["Text width (%)", "--text-width", 38, 20, 100, "%"],
     ["Intro offset (px)", "--intro-offset", 0, 0, 140, "px"],
-    ["Section spacing (px)", "--section-gap", 28, 0, 100, "px"],
-    ["Socials spacing (px)", "--social-gap", 40, 0, 100, "px"],
+    ["Section spacing (px)", "--section-gap", 24, 0, 100, "px"],
+    ["Socials spacing (px)", "--social-gap", 20, 0, 100, "px"],
   ];
   const config = Object.fromEntries(sliders.map(([label, , value, min, max]) => [
     label, [value, min, max, 1],

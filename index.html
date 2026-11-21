@@ -256,8 +256,8 @@ if (tune !== null && tune !== "0") {
 </script>
 
 <script type="module">
-import { createFetch } from "./fetch.js?v=homepage1";
-import { createWalker, createFigure } from "./photographer.js?v=continuous-walk";
+import { createFetch } from "./fetch.js?v=stationary1";
+import { createPhotographer, createFigure } from "./photographer.js?v=stationary1";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
 // ============================================================================
@@ -320,16 +320,15 @@ const DEFAULTS = {
   view: 0, frame: 1,
   deskX: 2.6, deskDepth: -1.1, lift: 0.02, gsize: 1.38, angle: -31, monitor: 1.4,
   mugX: 0.13, mugZ: 0, mugSize: 1,
-  hills: 0, depth: 0.92, background: 80, humps: 1, hillW: 1.56,
+  hills: 0, depth: 1.29, background: 80, humps: 1, hillW: 1.91,
   haze: 1.29, overall: 1.11, dof: 0, glow: 1,
   radius: 28, len: 0.54, density: 1.69, base: 0.5, lav: 0.5,
   wind: 1, gust: 1,
-  subject: 1.8, routeX: 165, routeDepth: -0.25, footHeight: -0.11,
-  walkSpeed: 1.35, walkDistance: 191, photoPause: 1.2,
+  subject: 1.85, routeX: 165, routeDepth: -0.25, footHeight: -0.11,
+  walkSpeed: 1.35, walkDistance: 28, photoPause: 1.2,
 };
-// people who ask their system for less motion get a gentle breeze by default
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
-if (REDUCED) DEFAULTS.wind = 0.35;
+const WIND_MOTION_SCALE = REDUCED ? 0.35 : 1;
 const P = { ...DEFAULTS };
 
 // ---------------------------------------------------------------------------
@@ -1258,7 +1257,7 @@ function setSetUniforms(u, on) {
 }
 const updateBrush = grassBrush(canvas,gl);
 const fetchGame=createFetch(stage,REDUCED,gl,program);
-const walker = createWalker(REDUCED);
+const photographer = createPhotographer(REDUCED);
 const drawFigure = createFigure(gl,program);
 canvas.addEventListener("click", event => {
   const rect=canvas.getBoundingClientRect(), scale=VIEWPORT.s/dpr;
@@ -1266,25 +1265,24 @@ canvas.addEventListener("click", event => {
   const sy=(event.clientY-rect.top)/scale+VIEWPORT.yTop;
   const foot=HY+(HC-footprint.y-P.footHeight)*F0/footprint.d;
   const height=P.subject*1.78*F0/footprint.d;
-  if(Math.abs(sx-(figureColumn(walker.state.x)))<height*.35 && sy>foot-height && sy<foot+4) walker.photo();
+  if(Math.abs(sx-figureColumn())<height*.35 && sy>foot-height && sy<foot+4) photographer.photo();
 });
 const footprint = {x:0,d:34,y:0,light:0,rim:0};
-function figureColumn(step) {
+function figureColumn() {
   const span=W/VIEWPORT.s;
-  return VIEWPORT.xL + span*.855 + (P.routeX-425) + step;
+  return VIEWPORT.xL + span*.855 + (P.routeX-425);
 }
 function updateFigure(dt) {
-  const s=walker.tick(fetchGame.throwing ? 0 : dt,P.walkSpeed,P.photoPause,P.walkDistance);
-  if(fetchGame.throwing){s.pose=s.next=fetchGame.throwPose;s.blend=s.bob=s.flash=0;}
+  photographer.tick(dt, P.photoPause);
   // Follow the visible rear silhouette in this screen column.
-  const ray=(figureColumn(s.x)-CX0)/F0;
+  const ray=(figureColumn()-CX0)/F0;
   let crest=23, highest=-Infinity;
   for(let depth=23;depth<=64;depth+=.5){
     const projected=(terrainH(ray*depth,depth)*P.depth-HC)/depth;
     if(projected>highest){highest=projected;crest=depth;}
   }
   const d=crest+P.routeDepth-1.4;
-  const x=(figureColumn(s.x)-CX0)*d/F0;
+  const x=(figureColumn()-CX0)*d/F0;
   const y=terrainH(x,d)*P.depth;
   const gx=(x-HM.x0)/(HM.x1-HM.x0)*HM.w-.5;
   const gy=(Math.log(d)-HM.ld0)/(HM.ld1-HM.ld0)*HM.h-.5;
@@ -1305,9 +1303,9 @@ function updateFetch(dt){
     return {worldX,d,light:hmData[(j*HM.w+i)*4+3],x:(sx-VIEWPORT.xL)*scale,y:(HY+(HC-height)*F0/d-VIEWPORT.yTop)*scale,ppm:F0*scale/d};
   }
   const hp=F0*scale/footprint.d;
-  const hand={ppm:hp,x:(figureColumn(walker.state.x)-VIEWPORT.xL)*scale+.61*P.subject*hp,
+  const launchPoint={ppm:hp,x:(figureColumn()-VIEWPORT.xL)*scale+.61*P.subject*hp,
     y:(HY-VIEWPORT.yTop)*scale+(HC-footprint.y-P.footHeight-1.15*P.subject)*hp};
-  fetchGame.draw(dt,{scale,width:W/dpr,height:H/dpr,left:VIEWPORT.xL,pixelRatio:dpr,ridge},hand);
+  fetchGame.draw(dt,{scale,width:W/dpr,height:H/dpr,left:VIEWPORT.xL,pixelRatio:dpr,ridge},launchPoint);
 }
 function render() {
   // 1) wind field
@@ -1332,7 +1330,7 @@ function render() {
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
 
   if (P.view === 0) {
-    drawFigure(walker.state,PV,footprint.x,footprint.y+P.footHeight,footprint.d,footprint.light,footprint.rim,P.subject);
+    drawFigure(photographer.state,PV,footprint.x,footprint.y+P.footHeight,footprint.d,footprint.light,footprint.rim,P.subject);
     fetchGame.render(PV,W/dpr,H/dpr);
     const deskOn = showDesk;
     if (deskOn) {
@@ -1409,7 +1407,7 @@ let windRun = 0, liveTimer = 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 function retarget() {
   const live = WIND.live && AIR.base;
-  AIR.target.wind = clamp((live ? AIR.base.wind : 1) * WIND.strength, 0, 2.5);
+  AIR.target.wind = clamp((live ? AIR.base.wind : 1) * WIND.strength * WIND_MOTION_SCALE, 0, 2.5);
   AIR.target.gust = clamp((live ? AIR.base.gust : 1) * WIND.gusts, 0, 2.5);
   AIR.target.speed = live ? AIR.base.speed : REF_SPEED * (.55 + .45 * Math.min(WIND.gusts, 1.5));
 }
@@ -1471,6 +1469,7 @@ if (qs.has("desk")) showDesk = qs.get("desk") !== "0";
 if (!showDesk) canvas.setAttribute("aria-label", "Grass hills blowing in Seattle's wind");
 WIND.live = !qs.has("wind") && !qs.has("gust") && qs.get("seattle") !== "0";
 WIND.strength = P.wind; WIND.gusts = P.gust;
+P.wind *= WIND_MOTION_SCALE;
 retarget();
 if (WIND.live) ensureLive();
 applyFrame();
@@ -1487,8 +1486,9 @@ requestAnimationFrame(() => {
   const debug = qs.get("debug") === "1";
   if (debug) fpsEl.style.display = "block";
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    updateFigure(document.hidden || paused ? 0 : dt);
+    const elapsed = (now - last) / 1000; last = now;
+    const dt = Math.min(0.05, elapsed);
+    updateFigure(document.hidden || paused ? 0 : elapsed);
     updateFetch(document.hidden || paused ? 0 : dt);
     updateBrush(dt, P.radius);
     if (!paused) { simTime += dt; stepAir(dt); }

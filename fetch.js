@@ -4,7 +4,7 @@ const smooth=t=>t*t*(3-2*t);
 
 export const fetchControls={
   Dog:{
-    'Size':[.95,.55,1.7,.05], 'Left end (%)':[17,5,45,1], 'Right end (%)':[88,55,95,1],
+    'Size':[1.25,.55,1.7,.05], 'Left end (%)':[17,5,45,1], 'Right end (%)':[88,55,95,1],
     'Ridge depth (m)':[-1.35,-1.5,1.5,.05], 'Paw height (m)':[0.27,0,.55,.01],
     'Coat warmth':[.2,0,1,.01], 'Coat hue (°)':[0,-40,40,1],
     'Saturation':[.87,.35,1.5,.01], 'Exposure':[1.03,.55,1.6,.01], 'Grass pressure':[1.4,0,2,.05],
@@ -107,7 +107,7 @@ export function createFetch(stage,reduced,gl,program) {
     ink.moveTo(-r,-r*.52);ink.bezierCurveTo(-r*.1,-r*.65,-r*.14,r*.46,-r*.43,r*1.1);
     ink.moveTo(r*.25,-r);ink.bezierCurveTo(r*.48,-r*.5,r*.28,r*.36,r,r*.48);ink.stroke();ink.restore();
   }
-  function draw(dt,view,hand) {
+  function draw(dt,view,launchPoint) {
     const D=settings.Dog,B=settings.Ball;
     const scale=view.scale,w=view.width,h=view.height;
     const pixelRatio=view.pixelRatio;
@@ -117,7 +117,7 @@ export function createFetch(stage,reduced,gl,program) {
     const left=Math.max(start,Math.min(end-100,20*D['Left end (%)']));
     const right=Math.max(left+75,Math.min(end,20*D['Right end (%)']));
     const direction=to===1?1:-1;
-    if(phase==='opening'&&time>=.69){release={...hand};enter('chase')}
+    if(phase==='opening'&&time>=.69){release={...launchPoint};enter('chase')}
     const runDuration=(right-left)/(520*D['Run speed (×)']);
     const duration=Math.max(B['Flight time (s)'],runDuration);
     const leapTime=Math.min(.64,duration*.43);
@@ -172,7 +172,7 @@ export function createFetch(stage,reduced,gl,program) {
     let radius=atEnd.ppm*.105*B.Size;
     const rest={x:atEnd.x+direction*atEnd.ppm*B['Beside dog (m)'],y:atEnd.y-radius};
     let point=rest,angle=0;
-    if(phase==='opening')point=hand;
+    if(phase==='opening')point=launchPoint;
     // Use the same raised muzzle at the flight endpoint and through the hold.
     const catchFrame=poseSize[18],catchScale=atEnd.ppm*D.Size*.00385;
     const muzzle={
@@ -181,7 +181,7 @@ export function createFetch(stage,reduced,gl,program) {
         -.833*catchFrame[1]*catchScale+radius*.5
     };
     if(phase==='chase'){
-      const t=clamp(time/interceptTime),src=release||hand;
+      const t=clamp(time/interceptTime),src=release||launchPoint;
       const catchPos=mix(from,to,catchAt);
       const hit=view.ridge(mix(left,right,catchPos),D['Ridge depth (m)'],D['Paw height (m)']);
       const mouth=(ground,elevation,frame)=>{
@@ -193,7 +193,7 @@ export function createFetch(stage,reduced,gl,program) {
       };
       const j=(catchAt-takeoff)/(1-takeoff);
       const target=mouth(hit,4*j*(1-j)*B['Arc height (px)']*.53*scale,11);
-      if(first)radius*=1/mix(atEnd.ppm/hand.ppm,1,t);
+      if(first)radius*=1/mix(atEnd.ppm/launchPoint.ppm,1,t);
       point=run>=catchAt?mouth(dog,lift,pose):{x:mix(src.x,target.x,t),y:mix(src.y,target.y,t)-4*t*(1-t)*B['Arc height (px)']*scale};
       angle=direction*t*8;
     }
@@ -211,7 +211,7 @@ export function createFetch(stage,reduced,gl,program) {
       point={x:mix(muzzle.x,rest.x,drop),y:mix(muzzle.y,rest.y,drop*drop)
         -4*bounce*(1-bounce)*Math.min(B['Bounce height (px)']*scale,(rest.y-muzzle.y)*.18)};
     }
-    if(phase==='opening')radius=hand.ppm*.105*B.Size;
+    if(phase==='opening')radius=launchPoint.ppm*.105*B.Size;
     ballContact[0]=atEnd.worldX+(point.x-atEnd.x)/atEnd.ppm;
     ballContact[1]=atEnd.d;
     ballContact[2]=phase==='opening'?0:clamp(1-Math.abs(rest.y-point.y)/(atEnd.ppm*.25));
@@ -240,5 +240,5 @@ export function createFetch(stage,reduced,gl,program) {
     ink.restore();previousBall=point;
     button.hidden=phase!=='wait';button.style.left=point.x+'px';button.style.top=point.y+'px';
   }
-  return {settings,paws,ballContact,draw,render,replay,get opening(){return phase==='opening'},get throwing(){return !reduced&&(phase==='opening'||(first&&phase==='chase'&&time<.32))},get throwPose(){return phase==='chase'?10:time<.44?8:9}};
+  return {settings,paws,ballContact,draw,render,replay};
 }

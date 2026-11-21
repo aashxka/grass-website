@@ -1,6 +1,6 @@
 export const motionDials = {
   "Nav duration (ms)": [720, 150, 1600, 10],
-  "Grass scroll speed (×)": [1, 0.5, 2.5, 0.05],
+  "Grass scroll speed (×)": [1.3, 0.5, 2.5, 0.05],
 };
 
 export const portfolioMotion = new EventTarget();
@@ -17,6 +17,7 @@ const landscape = document.querySelector(".landscape");
 const work = document.getElementById("work");
 const workRail = work.querySelector(".work-rail");
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const tuneControls = ".dialkit-root, .dialkit-version-overlay, [data-dialkit-ignore]";
 
 let duration = motionDials["Nav duration (ms)"][0];
 let grassSpeed = motionDials["Grass scroll speed (×)"][0];
@@ -109,7 +110,7 @@ function navigate(toWork, { animate = true, focusWork = false } = {}) {
   function step(now) {
     const progress = clampProgress((now - start) / scrollDuration);
     const end = toWork ? workTop : 0;
-    // A settle without overshoot; native scrolling can interrupt this at any point.
+    // Use the same ease-out for navigation and scroll gestures.
     const eased = 1 - (1 - progress) ** 3;
     window.scrollTo({ top: from + (end - from) * eased, behavior: "instant" });
     if (progress < 1) animation = requestAnimationFrame(step);
@@ -137,7 +138,53 @@ workLink.addEventListener("click", event => {
 });
 
 addEventListener("scroll", schedulePaint, { passive: true });
-addEventListener("wheel", stopAnimation, { passive: true });
+function canTurnPage(towardWork) {
+  return towardWork ? window.scrollY < workTop - 2 : window.scrollY > 1 && window.scrollY <= workTop + 2;
+}
+
+// A trackpad sends a series of wheel events, including momentum after release.
+// Consume the rest of that gesture so it cannot interrupt or overshoot the transition.
+let lastTurnWheel = -Infinity;
+addEventListener("wheel", event => {
+  if (event.defaultPrevented || event.ctrlKey || event.shiftKey ||
+      Math.abs(event.deltaY) <= Math.abs(event.deltaX) || event.target.closest?.(tuneControls)) return;
+  const now = performance.now();
+  if (now - lastTurnWheel < 160 || destination !== null) {
+    if (event.cancelable) event.preventDefault();
+    lastTurnWheel = now;
+    return;
+  }
+  const towardWork = event.deltaY > 0;
+  if (!event.cancelable || !canTurnPage(towardWork)) return;
+  event.preventDefault();
+  lastTurnWheel = now;
+  openFromNav(towardWork);
+}, { passive: false });
+
+let swipe = null;
+addEventListener("touchstart", event => {
+  swipe = null;
+  if (event.touches.length !== 1 || event.target.closest?.(tuneControls)) return;
+  const { clientX, clientY } = event.touches[0];
+  swipe = { x: clientX, y: clientY, turned: false };
+}, { passive: true });
+addEventListener("touchmove", event => {
+  if (!swipe || event.touches.length !== 1 || !event.cancelable) return;
+  if (swipe.turned) {
+    event.preventDefault();
+    return;
+  }
+  const dx = event.touches[0].clientX - swipe.x;
+  const dy = swipe.y - event.touches[0].clientY;
+  const towardWork = dy > 0;
+  if (Math.abs(dy) <= Math.abs(dx) || !canTurnPage(towardWork)) return;
+  // Hold native scrolling from the first vertical move while the swipe crosses the threshold.
+  event.preventDefault();
+  if (Math.abs(dy) < 12) return;
+  swipe.turned = true;
+  openFromNav(towardWork);
+}, { passive: false });
+
 for (const event of ["touchstart", "pointerdown"]) {
   addEventListener(event, input => {
     if (!workLink.contains(input.target)) stopAnimation();
