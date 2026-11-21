@@ -19,7 +19,7 @@ export const fetchControls={
     'Layer blur (px)':[5.5,0,14,.25], 'Glow rate (Hz)':[1.18,0,3,.01]
   }
 };
-export function createFetch(stage,reduced,gl,program) {
+export function createFetch(stage,reduced,gl,program,throwTiming) {
   const settings=Object.fromEntries(Object.entries(fetchControls).map(([name,group])=>[name,Object.fromEntries(Object.entries(group).map(([k,v])=>[k,v[0]]))]));
   const layer=document.createElement('canvas');
   layer.setAttribute('aria-hidden','true');layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:1;pointer-events:none';
@@ -93,10 +93,11 @@ export function createFetch(stage,reduced,gl,program) {
   const poseSize=[[341,180],[368,151],[358,170],[323,160],[343,192],[305,222],[296,216],[231,220],[227,226],[197,228],[198,241],[175,264],[211,236],[236,214],[218,218],[350,201],[258,155],[279,154],[273,192],[218,198],[129,227],[127,228],[114,278],[113,248]];
   const loaded=i=>images[i]?.naturalWidth>0;
   let phase='opening',time=0,run=0,from=0,to=1,pos=0,first=true,release,previousBall;
+  let throwAge=reduced?null:0;
   const ballContact=new Float32Array(3);
   const paws=new Float32Array(24); let lastStamp=-1;
   const enter=p=>{phase=p;time=0};
-  function replay(){paws.fill(0);lastStamp=-1;first=true;from=0;to=1;pos=0;run=0;release=null;previousBall=null;enter('opening');button.hidden=true;}
+  function replay(){paws.fill(0);lastStamp=-1;first=true;from=0;to=1;pos=0;run=0;release=null;previousBall=null;throwAge=reduced?null:0;enter('opening');button.hidden=true;}
   button.onclick=()=>{if(phase!=='wait')return;from=to;to=1-to;run=0;first=false;release=previousBall;enter('chase');button.hidden=true};
   function ball(x,y,r,angle){
     ink.save();ink.translate(x,y);ink.beginPath();ink.arc(0,0,r,0,Math.PI*2);ink.clip();
@@ -107,17 +108,27 @@ export function createFetch(stage,reduced,gl,program) {
     ink.moveTo(-r,-r*.52);ink.bezierCurveTo(-r*.1,-r*.65,-r*.14,r*.46,-r*.43,r*1.1);
     ink.moveTo(r*.25,-r);ink.bezierCurveTo(r*.48,-r*.5,r*.28,r*.36,r,r*.48);ink.stroke();ink.restore();
   }
-  function draw(dt,view,launchPoint) {
+  function draw(dt,view,handAt) {
     const D=settings.Dog,B=settings.Ball;
     const scale=view.scale,w=view.width,h=view.height;
     const pixelRatio=view.pixelRatio;
     if(![7,11,12,15,18].every(loaded))return;
+    if(throwAge!==null){
+      throwAge+=dt;
+      if(throwAge>=throwTiming.end)throwAge=null;
+    }
     time+=dt;
     const start=Math.max(200,view.left+w/scale*.07),end=Math.min(1870,view.left+w/scale*.93);
     const left=Math.max(start,Math.min(end-100,20*D['Left end (%)']));
     const right=Math.max(left+75,Math.min(end,20*D['Right end (%)']));
     const direction=to===1?1:-1;
-    if(phase==='opening'&&time>=.69){release={...launchPoint};enter('chase')}
+    if(phase==='opening'&&reduced){
+      pos=to;
+      enter('wait');
+    }else if(phase==='opening'&&throwAge>=throwTiming.release){
+      release=handAt(throwTiming.release);
+      enter('chase');
+    }
     const runDuration=(right-left)/(520*D['Run speed (×)']);
     const duration=Math.max(B['Flight time (s)'],runDuration);
     const leapTime=Math.min(.64,duration*.43);
@@ -150,7 +161,6 @@ export function createFetch(stage,reduced,gl,program) {
       if(beat%2===1)pose=within<.22?21:22;
       else if(beat>0&&within<.22)pose=23;
     }
-    if(reduced && first && phase==='opening'){pos=to;enter('wait')}
     for(let i=3;i<paws.length;i+=4)paws[i]*=Math.exp(-dt*4.8);
     const stamp=phase==='chase'?Math.floor(time*11*D['Gallop tempo (×)']):-1;
     if(!lift && stamp!==lastStamp && (pose===0||pose===2)){
@@ -172,7 +182,7 @@ export function createFetch(stage,reduced,gl,program) {
     let radius=atEnd.ppm*.105*B.Size;
     const rest={x:atEnd.x+direction*atEnd.ppm*B['Beside dog (m)'],y:atEnd.y-radius};
     let point=rest,angle=0;
-    if(phase==='opening')point=launchPoint;
+    if(phase==='opening')point=handAt(throwAge);
     // Use the same raised muzzle at the flight endpoint and through the hold.
     const catchFrame=poseSize[18],catchScale=atEnd.ppm*D.Size*.00385;
     const muzzle={
@@ -181,7 +191,7 @@ export function createFetch(stage,reduced,gl,program) {
         -.833*catchFrame[1]*catchScale+radius*.5
     };
     if(phase==='chase'){
-      const t=clamp(time/interceptTime),src=release||launchPoint;
+      const t=clamp(time/interceptTime),src=release;
       const catchPos=mix(from,to,catchAt);
       const hit=view.ridge(mix(left,right,catchPos),D['Ridge depth (m)'],D['Paw height (m)']);
       const mouth=(ground,elevation,frame)=>{
@@ -193,7 +203,7 @@ export function createFetch(stage,reduced,gl,program) {
       };
       const j=(catchAt-takeoff)/(1-takeoff);
       const target=mouth(hit,4*j*(1-j)*B['Arc height (px)']*.53*scale,11);
-      if(first)radius*=1/mix(atEnd.ppm/launchPoint.ppm,1,t);
+      if(first)radius*=1/mix(atEnd.ppm/src.ppm,1,t);
       point=run>=catchAt?mouth(dog,lift,pose):{x:mix(src.x,target.x,t),y:mix(src.y,target.y,t)-4*t*(1-t)*B['Arc height (px)']*scale};
       angle=direction*t*8;
     }
@@ -211,7 +221,7 @@ export function createFetch(stage,reduced,gl,program) {
       point={x:mix(muzzle.x,rest.x,drop),y:mix(muzzle.y,rest.y,drop*drop)
         -4*bounce*(1-bounce)*Math.min(B['Bounce height (px)']*scale,(rest.y-muzzle.y)*.18)};
     }
-    if(phase==='opening')radius=launchPoint.ppm*.105*B.Size;
+    if(phase==='opening')radius=point.ppm*.105*B.Size;
     ballContact[0]=atEnd.worldX+(point.x-atEnd.x)/atEnd.ppm;
     ballContact[1]=atEnd.d;
     ballContact[2]=phase==='opening'?0:clamp(1-Math.abs(rest.y-point.y)/(atEnd.ppm*.25));
@@ -236,9 +246,9 @@ export function createFetch(stage,reduced,gl,program) {
       ink.restore();
     }
     ink.save();ink.filter='brightness('+(.87+.13*atEnd.light)+')';
-    if(phase!=='opening'||time>=.44)ball(pad,pad,radius,angle);
+    ball(pad,pad,radius,angle);
     ink.restore();previousBall=point;
     button.hidden=phase!=='wait';button.style.left=point.x+'px';button.style.top=point.y+'px';
   }
-  return {settings,paws,ballContact,draw,render,replay};
+  return {settings,paws,ballContact,draw,render,replay,get throwAge(){return throwAge}};
 }

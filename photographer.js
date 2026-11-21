@@ -1,3 +1,31 @@
+const throwFrames = [
+  { time: 0, pose: 8, handX: .272, handY: .460 },
+  { time: .57, pose: 8, handX: .272, handY: .460 },
+  { time: .81, pose: 9, handX: .807, handY: .350 },
+  { time: 1.02, pose: 10, handX: .838, handY: .107 },
+  { time: 1.20, pose: 10, handX: .838, handY: .107 },
+  { time: 1.38, pose: 9, handX: .807, handY: .350 },
+  { time: 1.60, pose: 4, handX: .509, handY: .546 },
+];
+export const throwTiming = {
+  release: throwFrames[3].time,
+  end: throwFrames.at(-1).time,
+};
+export const FIGURE_HEIGHT = 1.78 * 256 / 246;
+
+export function sampleThrow(time) {
+  let i = 0;
+  while (i < throwFrames.length - 2 && time > throwFrames[i + 1].time) i++;
+  const a = throwFrames[i], b = throwFrames[i + 1];
+  const t = Math.min(1, Math.max(0, (time - a.time) / (b.time - a.time)));
+  const blend = t * t * (3 - 2 * t);
+  return {
+    direction: 1, pose: a.pose, next: b.pose, blend, flash: 0,
+    handX: a.handX + (b.handX - a.handX) * blend,
+    handY: a.handY + (b.handY - a.handY) * blend,
+  };
+}
+
 export function createPhotographer(reduced) {
   const interval = 5;
   const shutter = 0.89;
@@ -51,13 +79,16 @@ export function createFigure(gl,program) {
     precision highp float; uniform mat4 pv;uniform vec3 feet;uniform float facing, size;
     out vec2 uv;void main(){
       uv=vec2(gl_VertexID%2,gl_VertexID/2);
-      vec2 pt=vec2((uv.x-.5)*facing,(1.-uv.y))*(size*1.78*256./246.);
+      vec2 pt=vec2((uv.x-.5)*facing,(1.-uv.y))*size*${FIGURE_HEIGHT};
       gl_Position=pv*vec4(feet+vec3(pt,0.),1.);
     }`,`#version 300 es
     precision highp float;in vec2 uv;out vec4 color;
     uniform sampler2D atlas;uniform vec4 frames;uniform vec3 lighting;uniform float facing,flash,depth;
     vec4 samplePose(float frame) {
-      return texture(atlas, (vec2(mod(frame, 4.), floor(frame / 4.)) + uv) / 4., -.45);
+      vec4 pixel=texture(atlas, (vec2(mod(frame, 4.), floor(frame / 4.)) + uv) / 4., -.45);
+      // The wind-up artwork has its own painted ball. Render the animated ball in its place.
+      if (frame == 8. && distance(uv, vec2(.272,.460)) < .040 && pixel.b > pixel.r * 1.1) pixel.a = 0.;
+      return pixel;
     }
 
     void main(){
@@ -77,7 +108,7 @@ export function createFigure(gl,program) {
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
     gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);ready=true;};
   img.src='./fetch/hd/figure.webp';
-  return (s,pv,x,y,d,light,rim,size)=>{
+  function draw(s,pv,x,y,d,light,rim,size){
     if(!ready)return;
     const u=shader.u;gl.useProgram(shader.p);gl.bindVertexArray(vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(u.atlas,7);
@@ -86,5 +117,6 @@ export function createFigure(gl,program) {
     gl.uniform4f(u.frames,s.pose,s.next,s.blend,0);gl.uniform1f(u.flash,s.flash);
     gl.uniform3f(u.lighting,light,rim,0);gl.uniform1f(u.depth,Math.log(d/4)/Math.log(60));
     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
-  };
+  }
+  return { draw, get ready() { return ready; } };
 }

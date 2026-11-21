@@ -256,8 +256,8 @@ if (tune !== null && tune !== "0") {
 </script>
 
 <script type="module">
-import { createFetch } from "./fetch.js?v=stationary1";
-import { createPhotographer, createFigure } from "./photographer.js?v=right-facing";
+import { createFetch } from "./fetch.js?v=opening-throw";
+import { createPhotographer, createFigure, FIGURE_HEIGHT, sampleThrow, throwTiming } from "./photographer.js?v=opening-throw";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
 // ============================================================================
@@ -1256,9 +1256,9 @@ function setSetUniforms(u, on) {
   gl.uniform4fv(u.uBoxC, boxC); gl.uniform3fv(u.uBoxH, boxH);
 }
 const updateBrush = grassBrush(canvas,gl);
-const fetchGame=createFetch(stage,REDUCED,gl,program);
+const fetchGame=createFetch(stage,REDUCED,gl,program,throwTiming);
 const photographer = createPhotographer(REDUCED);
-const drawFigure = createFigure(gl,program);
+const figure = createFigure(gl,program);
 canvas.addEventListener("click", event => {
   const rect=canvas.getBoundingClientRect(), scale=VIEWPORT.s/dpr;
   const sx=(event.clientX-rect.left)/scale+VIEWPORT.xL;
@@ -1305,9 +1305,16 @@ function updateFetch(dt){
     return {worldX,d,light:hmData[(j*HM.w+i)*4+3],x:(sx-VIEWPORT.xL)*scale,y:(HY+(HC-height)*F0/d-VIEWPORT.yTop)*scale,ppm:F0*scale/d};
   }
   const hp=F0*scale/footprint.d;
-  const launchPoint={ppm:hp,x:(figureColumn()-VIEWPORT.xL)*scale+.61*P.subject*hp,
-    y:(HY-VIEWPORT.yTop)*scale+(HC-footprint.y-P.footHeight-1.15*P.subject)*hp};
-  fetchGame.draw(dt,{scale,width:W/dpr,height:H/dpr,left:VIEWPORT.xL,pixelRatio:dpr,ridge},launchPoint);
+  const height = P.subject * FIGURE_HEIGHT * hp;
+  const feetX = (figureColumn() - VIEWPORT.xL) * scale;
+  const feetY = (HY - VIEWPORT.yTop) * scale + (HC - footprint.y - P.footHeight) * hp;
+  function handAt(time) {
+    const pose = sampleThrow(time);
+    return { ppm: hp, x: feetX + (pose.handX - .5) * pose.direction * height, y: feetY - (1 - pose.handY) * height };
+  }
+  if (figure.ready) {
+    fetchGame.draw(dt,{scale,width:W/dpr,height:H/dpr,left:VIEWPORT.xL,pixelRatio:dpr,ridge},handAt);
+  }
 }
 function render() {
   // 1) wind field
@@ -1332,7 +1339,8 @@ function render() {
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
 
   if (P.view === 0) {
-    drawFigure(photographer.state,PV,footprint.x,footprint.y+P.footHeight,footprint.d,footprint.light,footprint.rim,P.subject);
+    const pose = fetchGame.throwAge === null ? photographer.state : sampleThrow(fetchGame.throwAge);
+    figure.draw(pose,PV,footprint.x,footprint.y+P.footHeight,footprint.d,footprint.light,footprint.rim,P.subject);
     fetchGame.render(PV,W/dpr,H/dpr);
     const deskOn = showDesk;
     if (deskOn) {
