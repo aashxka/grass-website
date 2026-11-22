@@ -142,59 +142,41 @@ workLink.addEventListener("click", event => {
   openFromNav(!goingToWork, event.detail === 0);
 });
 
-addEventListener("scroll", schedulePaint, { passive: true });
-function canTurnPage(towardWork) {
-  return towardWork ? window.scrollY < workTop - 2 : window.scrollY > 1 && window.scrollY <= workTop + 2;
+// Let the browser handle wheel momentum, touch panning and scrollbar dragging.
+// Complete a partial section transition when the native gesture ends.
+let previousY = window.scrollY;
+let towardWork = true;
+let moved = false;
+let settleTimer = 0;
+const hasScrollEnd = "onscrollend" in document;
+
+function settleScroll() {
+  clearTimeout(settleTimer);
+  if (!moved || destination !== null) return;
+  moved = false;
+  if (window.scrollY > 0 && window.scrollY < workTop) openFromNav(towardWork);
 }
 
-// A trackpad sends a series of wheel events, including momentum after release.
-// Consume the rest of that gesture so it cannot interrupt or overshoot the transition.
-let lastTurnWheel = -Infinity;
-addEventListener("wheel", event => {
-  if (event.defaultPrevented || event.ctrlKey || event.shiftKey ||
-      Math.abs(event.deltaY) <= Math.abs(event.deltaX) || event.target.closest?.(tuneControls)) return;
-  const now = performance.now();
-  if (now - lastTurnWheel < 160 || destination !== null) {
-    if (event.cancelable) event.preventDefault();
-    lastTurnWheel = now;
-    return;
+addEventListener("scroll", () => {
+  const y = window.scrollY;
+  if (y !== previousY) {
+    towardWork = y > previousY;
+    moved = destination === null;
+    previousY = y;
   }
-  const towardWork = event.deltaY > 0;
-  if (!event.cancelable || !canTurnPage(towardWork)) return;
-  event.preventDefault();
-  lastTurnWheel = now;
-  openFromNav(towardWork);
-}, { passive: false });
-
-let swipe = null;
-addEventListener("touchstart", event => {
-  swipe = null;
-  if (event.touches.length !== 1 || event.target.closest?.(tuneControls)) return;
-  const { clientX, clientY } = event.touches[0];
-  swipe = { x: clientX, y: clientY, turned: false };
+  schedulePaint();
+  if (!hasScrollEnd && moved) {
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(settleScroll, 180);
+  }
 }, { passive: true });
-addEventListener("touchmove", event => {
-  if (!swipe || event.touches.length !== 1 || !event.cancelable) return;
-  if (swipe.turned) {
-    event.preventDefault();
-    return;
-  }
-  const dx = event.touches[0].clientX - swipe.x;
-  const dy = swipe.y - event.touches[0].clientY;
-  const towardWork = dy > 0;
-  if (Math.abs(dy) <= Math.abs(dx) || !canTurnPage(towardWork)) return;
-  // Hold native scrolling from the first vertical move while the swipe crosses the threshold.
-  event.preventDefault();
-  if (Math.abs(dy) < 12) return;
-  swipe.turned = true;
-  openFromNav(towardWork);
-}, { passive: false });
+document.addEventListener("scrollend", settleScroll);
 
-for (const event of ["touchstart", "pointerdown"]) {
-  addEventListener(event, input => {
-    if (!workLink.contains(input.target)) stopAnimation();
-  }, { passive: true });
+function interruptNavigation(event) {
+  if (!workLink.contains(event.target) && !event.target.closest?.(tuneControls)) stopAnimation();
 }
+addEventListener("pointerdown", interruptNavigation, { passive: true });
+addEventListener("wheel", interruptNavigation, { passive: true });
 addEventListener("keydown", event => {
   if (event.defaultPrevented) return;
   if (event.key === "Escape" && (location.hash === "#work" || window.scrollY > introEnd)) {
