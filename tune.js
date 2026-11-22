@@ -95,21 +95,76 @@ export async function mountHomepageTune() {
   const config = Object.fromEntries(sliders.map(([label, , value, min, max]) => [
     label, [value, min, max, 1],
   ]));
-  config["Heading font"] = select(["Outfit", "Stevie Sans Book", "Bricolage Grotesque"], "Outfit");
+  config["Heading font"] = select(
+    ["Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
+    "Outfit",
+  );
+  config["Google font family"] = { type: "text", default: "", placeholder: "Exact family name, e.g. Inter" };
+  config["Choose desktop font file"] = { type: "action" };
   config["Intro position"] = select(["Top left", "Top center", "Top right"], "Top left");
   config["Text alignment"] = select(["Left", "Center", "Right"], "Left");
   config["Nav alignment"] = select(["Left", "Center", "Right"], "Right");
+  const fontFile = document.createElement("input");
+  fontFile.type = "file";
+  fontFile.accept = ".woff2,.woff,.ttf,.otf";
+  let desktopFace;
+  let selectedGoogleFamily = "";
+  let googleStylesheet;
+  let googleTimer;
+
   const kit = createDialKit("Homepage", config, {
     id: "homepage",
     persist: { key: "grass-website-homepage" },
+    onAction: path => {
+      if (path === "Choose desktop font file") fontFile.click();
+    },
   });
+
+  fontFile.addEventListener("change", async () => {
+    const file = fontFile.files[0];
+    fontFile.value = "";
+    if (!file) return;
+    try {
+      const face = await new FontFace("Portfolio desktop preview", await file.arrayBuffer()).load();
+      if (desktopFace) document.fonts.delete(desktopFace);
+      desktopFace = face;
+      document.fonts.add(face);
+      kit.setValue("Heading font", "Desktop font");
+      applyHeadingFont(kit.getValues());
+    } catch {
+      alert("This font could not be loaded. Choose a WOFF2, WOFF, TTF, or OTF file.");
+    }
+  });
+
+  function applyHeadingFont(values) {
+    const selection = values["Heading font"];
+    const googleFamily = selection === "Google Font" ? values["Google font family"].trim() : "";
+    if (googleFamily !== selectedGoogleFamily) {
+      selectedGoogleFamily = googleFamily;
+      clearTimeout(googleTimer);
+      googleStylesheet?.remove();
+      if (googleFamily) {
+        googleTimer = setTimeout(() => {
+          const params = new URLSearchParams({ family: googleFamily, display: "swap" });
+          googleStylesheet = document.createElement("link");
+          googleStylesheet.rel = "stylesheet";
+          googleStylesheet.href = "https://fonts.googleapis.com/css2?" + params;
+          document.head.append(googleStylesheet);
+        }, 350);
+      }
+    }
+    let family = selection;
+    if (selection === "Google Font") family = googleFamily || "Outfit";
+    if (selection === "Desktop font") family = desktopFace?.family || "Outfit";
+    homepage.style.setProperty("--heading-font", `"${CSS.escape(family)}", "Outfit"`);
+  }
   function apply(values) {
     for (const [label, property, defaultValue, , , unit] of sliders) {
       const value = values[label];
       if (value === defaultValue) homepage.style.removeProperty(property);
       else homepage.style.setProperty(property, value + unit);
     }
-    homepage.style.setProperty("--heading-font", `"${values["Heading font"]}"`);
+    applyHeadingFont(values);
     intro.dataset.position = values["Intro position"].toLowerCase().replace(" ", "-");
     intro.dataset.textAlign = values["Text alignment"].toLowerCase();
     nav.dataset.align = values["Nav alignment"].toLowerCase();
