@@ -10,6 +10,17 @@
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/outfit.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="homepage.css?v=scarf-ball">
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.2.4",
+    "react/": "https://esm.sh/react@19.2.4/",
+    "react-dom": "https://esm.sh/react-dom@19.2.4?external=react",
+    "react-dom/client": "https://esm.sh/react-dom@19.2.4/client?external=react",
+    "agentation": "https://esm.sh/agentation@3.1.2?bundle&external=react,react-dom"
+  }
+}
+</script>
 <style>
   @font-face { font-family: "Stevie Sans Book"; src: url("fonts/stevie-sans-book.woff") format("woff"); font-weight: 400; font-style: normal; font-display: block; }
   :root {
@@ -224,6 +235,28 @@
 </main>
 </div>
 <script type="module" src="page-scroll.js"></script>
+<script type="module">
+if (new URLSearchParams(location.search).has("annotate")) {
+  try {
+    const [{ createElement }, { createRoot }, { Agentation }] = await Promise.all([
+      import("react"), import("react-dom/client"), import("agentation"),
+    ]);
+    const root = document.createElement("div");
+    document.body.append(root);
+    createRoot(root).render(createElement(Agentation, {
+      appName: "Aashika’s portfolio",
+      useHashLocation: true,
+    }));
+  } catch (error) {
+    console.warn("Agentation could not load", error);
+    const status = document.createElement("p");
+    status.role = "status";
+    status.style.cssText = "position:fixed;right:24px;bottom:24px;z-index:10;margin:0;padding:12px 16px;border-radius:12px;background:#fff;color:#1b1b1b";
+    status.textContent = "Agentation didn’t load. Refresh to retry.";
+    document.body.append(status);
+  }
+}
+</script>
 <script>
 // Socials: hover and focus are plain CSS; the script only copies the email.
 (() => {
