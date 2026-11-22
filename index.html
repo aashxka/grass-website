@@ -68,12 +68,15 @@
   .nav a:active { scale: 0.97; }
   .nav a[aria-current="page"] { color: #1b1b1b; }
   .nav a:focus-visible { outline: 2px solid #1b1b1b; outline-offset: -2px; }
-  @media (hover: hover) and (pointer: fine) { .nav a:not([aria-current]):hover { color: #424242; } }
+  @media (hover: hover) and (pointer: fine) {
+    .nav a:not([aria-current]):hover { color: #424242; }
+    .nav:has(a:hover) .nav-thumb { opacity: 0.5; }
+  }
   .nav-thumb {
     position: absolute; left: 0; top: 5px; height: var(--nav-item-height); width: 0; border-radius: 999px;
     background: #fff;
     box-shadow: inset 0 -1px 1px #fafafa, inset 0 -2px 3px #e3e3e3, 0 3px 4px -1px rgba(95, 95, 95, 0.1);
-    transition: transform var(--glide), width var(--glide);
+    transition: transform var(--glide), width var(--glide), opacity 200ms ease;
   }
   @media (max-width: 720px), (pointer: coarse) { .nav { --nav-item-height: 44px; } }
 
