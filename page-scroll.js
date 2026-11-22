@@ -26,6 +26,8 @@ let animation = 0, pendingPaint = 0, destination = null;
 let current, openedWork = false;
 
 function placeThumb(animate) {
+  thumb.hidden = !current;
+  if (!current) return;
   if (!animate) thumb.style.transition = "none";
   thumb.style.width = current.offsetWidth + "px";
   thumb.style.transform = `translateX(${current.offsetLeft}px)`;
@@ -36,13 +38,15 @@ function placeThumb(animate) {
 }
 
 function selectLink(animate) {
-  const next = links.find(link => link.hash === location.hash) || workLink;
-  if (current !== next) {
-    current?.removeAttribute("aria-current");
-    current = next;
-    current.setAttribute("aria-current", "page");
-  }
-  placeThumb(animate);
+  const hashLink = links.find(link => link.hash === location.hash);
+  const onWork = workTop > 0 && window.scrollY >= workTop - 2;
+  const next = hashLink && hashLink !== workLink ? hashLink : onWork ? workLink : undefined;
+  if (current === next) return;
+  const hasPrevious = Boolean(current);
+  current?.removeAttribute("aria-current");
+  current = next;
+  current?.setAttribute("aria-current", "page");
+  placeThumb(animate && hasPrevious);
 }
 
 function paint() {
@@ -67,6 +71,7 @@ function paint() {
     history.replaceState(history.state, "", location.pathname + location.search);
     openedWork = false;
   }
+  selectLink(true);
 }
 
 function measure() {
@@ -219,6 +224,7 @@ selectLink(false);
 measure();
 if (startInWork) navigate(true, { animate: false });
 new ResizeObserver(measure).observe(intro);
+new ResizeObserver(measure).observe(home);
 new ResizeObserver(() => placeThumb(false)).observe(nav);
 const font = document.fonts ? document.fonts.load('14px "Stevie Sans Book"') : Promise.resolve();
 Promise.race([font, new Promise(resolve => setTimeout(resolve, 1500))]).catch(() => {}).then(() => {

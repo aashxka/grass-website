@@ -85,8 +85,13 @@ export function createFigure(gl,program) {
     }`,`#version 300 es
     precision highp float;in vec2 uv;out vec4 color;
     uniform sampler2D atlas;uniform vec4 frames;uniform vec3 lighting;uniform float facing,flash,depth;
+    uniform vec3 hairWind;
     vec4 samplePose(float frame) {
-      vec4 pixel=texture(atlas, (vec2(mod(frame, 4.), floor(frame / 4.)) + uv) / 4., -.45);
+      // Keep the crown and face anchored and give the loose ends more travel.
+      float ends=(1.-smoothstep(.365,.455,uv.x))*smoothstep(.075,.18,uv.y)*(1.-smoothstep(.29,.38,uv.y));
+      float ripple=.78+.22*sin(hairWind.z-uv.y*19.);
+      vec2 poseUV=uv-vec2(hairWind.x*facing,hairWind.y)*ends*ripple;
+      vec4 pixel=texture(atlas, (vec2(mod(frame, 4.), floor(frame / 4.)) + poseUV) / 4., -.45);
       // The wind-up artwork has its own painted ball. Render the animated ball in its place.
       if (frame == 8. && distance(uv, vec2(.272,.460)) < .040 && pixel.b > pixel.r * 1.1) pixel.a = 0.;
       return pixel;
@@ -109,13 +114,14 @@ export function createFigure(gl,program) {
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
     gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);ready=true;};
   img.src='./fetch/hd/figure.webp';
-  function draw(s,pv,x,y,d,light,rim,size){
+  function draw(s,pv,x,y,d,light,rim,size,hairX,hairY,windPhase){
     if(!ready)return;
     const u=shader.u;gl.useProgram(shader.p);gl.bindVertexArray(vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(u.atlas,7);
     gl.uniformMatrix4fv(u.pv,false,pv);gl.uniform3f(u.feet,x,y,-d);
     gl.uniform1f(u.size,size);gl.uniform1f(u.facing,s.direction);
     gl.uniform4f(u.frames,s.pose,s.next,s.blend,0);gl.uniform1f(u.flash,s.flash);
+    gl.uniform3f(u.hairWind,hairX,hairY,windPhase);
     gl.uniform3f(u.lighting,light,rim,0);gl.uniform1f(u.depth,Math.log(d/4)/Math.log(60));
     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   }

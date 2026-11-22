@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/outfit.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="homepage.css?v=scarf-ball">
+<link rel="stylesheet" href="homepage.css?v=feedback">
 <script type="importmap">
 {
   "imports": {
@@ -163,7 +163,7 @@
 </div>
 <div class="homepage">
 <nav class="nav" id="nav" aria-label="Main">
-  <span class="nav-thumb" aria-hidden="true"></span>
+  <span class="nav-thumb" aria-hidden="true" hidden></span>
   <a href="#work" data-label="Work">Work</a>
   <a href="#about" data-label="About">About</a>
   <a href="#experiments" data-label="Experiments">Experiments</a>
@@ -234,7 +234,7 @@
 </section>
 </main>
 </div>
-<script type="module" src="page-scroll.js"></script>
+<script type="module" src="page-scroll.js?v=feedback"></script>
 <script type="module">
 if (new URLSearchParams(location.search).has("annotate")) {
   try {
@@ -284,14 +284,14 @@ if (new URLSearchParams(location.search).has("annotate")) {
 <script type="module">
 const tune = new URLSearchParams(location.search).get("tune");
 if (tune !== null && tune !== "0") {
-  import("./tune.js?v=scarf-ball").then(({ mountHomepageTune }) => mountHomepageTune())
+  import("./tune.js?v=feedback").then(({ mountHomepageTune }) => mountHomepageTune())
     .catch(error => console.warn("Homepage controls could not load", error));
 }
 </script>
 
 <script type="module">
 import { createFetch } from "./fetch.js?v=scarf-ball";
-import { createPhotographer, createFigure, FIGURE_HEIGHT, sampleThrow, throwTiming } from "./photographer.js?v=opening-delay";
+import { createPhotographer, createFigure, FIGURE_HEIGHT, sampleThrow, throwTiming } from "./photographer.js?v=feedback";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
 // ============================================================================
@@ -336,8 +336,8 @@ const GIRL = { xs: 1170, d: 15.5, hPx: 175, imgW: 445, imgH: 345 };
 // Palette sampled from the banner
 // Every colour is editable in the Colours panel. Each maps to one shader uniform.
 const PAL_DEFAULT = {
-  sky: "#ffffff", root: "#4a591d", lower: "#2f3b07", midBlade: "#313e0b", shade: "#2c4619", sunlit: "#495a14",
-  tipGreen: "#577214", straw: "#77654c", lav: "#5c5944", lavBright: "#574b24", base: "#425616", dark: "#59612b",
+  sky: "#ffffff", root: "#4a591d", lower: "#5e6b18", midBlade: "#3e4e09", shade: "#3c4a12", sunlit: "#495a14",
+  tipGreen: "#577214", straw: "#59704a", lav: "#58661b", lavBright: "#3f5424", base: "#425616", dark: "#354e12",
   wood: "#c76d29", plastic: "#d9cbb1", fabric: "#bb7847",
 };
 const PAL_INFO = [
@@ -355,7 +355,7 @@ const DEFAULTS = {
   deskX: 2.85, deskDepth: -1.1, lift: 0.02, gsize: 1.38, angle: -31, monitor: 1.4,
   mugX: 0.13, mugZ: 0, mugSize: 1,
   hills: 0, depth: 1.29, background: 80, humps: 1, hillW: 1.91,
-  haze: 1.29, overall: 1.11, dof: 0, glow: 1,
+  haze: 0.89, overall: 1.11, dof: 0, glow: 0,
   radius: 28, len: 0.54, density: 1.69, base: 0.5, lav: 0.5,
   wind: 1, gust: 1,
   subject: 1.85, routeX: 165, routeDepth: -0.25, footHeight: -0.11,
@@ -1374,7 +1374,9 @@ function render() {
 
   if (P.view === 0) {
     const pose = fetchGame.throwAge === null ? photographer.state : sampleThrow(fetchGame.throwAge);
-    figure.draw(pose,PV,footprint.x,footprint.y+P.footHeight,footprint.d,footprint.light,footprint.rim,P.subject);
+    const hairStrength = REDUCED ? 0 : .038 * Math.min(1.6, P.wind * (.85 + .15 * P.gust));
+    figure.draw(pose,PV,footprint.x,footprint.y+P.footHeight,footprint.d,footprint.light,footprint.rim,P.subject,
+      AIR.hairX * hairStrength,AIR.hairY * hairStrength * .48,windRun * .9);
     fetchGame.render(PV,W/dpr,H/dpr);
     const deskOn = showDesk;
     if (deskOn) {
@@ -1444,7 +1446,8 @@ function render() {
 // ordinary 4.2 m/s day looks like; the gust bands travel across the field at the real speed.
 const SEATTLE = "https://api.open-meteo.com/v1/forecast?latitude=47.6062&longitude=-122.3321&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=ms";
 const REF_SPEED = 4.2, REF_GUST = 7.6;           // m/s at Strength 1 and Gusts 1
-const AIR = { speed: REF_SPEED, live: false, base: null, target: { wind: P.wind, gust: P.gust, speed: REF_SPEED } };
+const AIR = { speed: REF_SPEED, live: false, base: null, hairX: 1, hairY: 0,
+  target: { wind: P.wind, gust: P.gust, speed: REF_SPEED, hairX: 1, hairY: 0 } };
 // The Wind dials. With Seattle live wind on, Strength and Gusts scale the live reading (1.00 = Seattle
 // as it is); with it off they are the plain grass-hills values.
 const WIND = { live: true, strength: P.wind, gusts: P.gust };
@@ -1455,6 +1458,11 @@ function retarget() {
   AIR.target.wind = clamp((live ? AIR.base.wind : 1) * WIND.strength * WIND_MOTION_SCALE, 0, 2.5);
   AIR.target.gust = clamp((live ? AIR.base.gust : 1) * WIND.gusts, 0, 2.5);
   AIR.target.speed = live ? AIR.base.speed : REF_SPEED * (.55 + .45 * Math.min(WIND.gusts, 1.5));
+  const direction = live && Number.isFinite(AIR.reading?.dir) ? AIR.reading.dir : 270;
+  const radians = direction * Math.PI / 180;
+  // Weather bearings are where the wind comes from, so bend away from them.
+  AIR.target.hairX = -Math.sin(radians);
+  AIR.target.hairY = Math.cos(radians);
 }
 function applyAir(speed, gusts) {
   AIR.base = { speed: clamp(speed, 0.3, 25), wind: clamp(speed / REF_SPEED, 0.12, 2), gust: clamp(gusts / REF_GUST, 0.15, 2) };
@@ -1500,6 +1508,8 @@ function stepAir(dt) {
   P.wind += (AIR.target.wind - P.wind) * k;
   P.gust += (AIR.target.gust - P.gust) * k;
   AIR.speed += (AIR.target.speed - AIR.speed) * k;
+  AIR.hairX += (AIR.target.hairX - AIR.hairX) * k;
+  AIR.hairY += (AIR.target.hairY - AIR.hairY) * k;
   windRun += AIR.speed * dt;
 }
 const applyFrame = () => { document.body.classList.toggle("banner", P.frame === 0); updateCamera(); };
@@ -1548,7 +1558,7 @@ requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=scarf-ball").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=feedback").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {

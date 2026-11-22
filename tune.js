@@ -11,7 +11,7 @@
 //   Colours     all 14 pickers, reset colours
 //   Reset       back to the tuned defaults (colours stay, as in grass-hills)
 import { createDialKit, createDialRoot } from "./vendor/dialkit/index.js";
-import { motionDials, portfolioMotion } from "./page-scroll.js";
+import { motionDials, portfolioMotion } from "./page-scroll.js?v=feedback";
 
 const VIEW = [{ value: "0", label: "Scene" }, { value: "1", label: "Terrain" }];
 const FRAME = [{ value: "0", label: "Banner" }, { value: "1", label: "Hero 16:9" }];
@@ -76,16 +76,26 @@ function getDialRoot() {
 
 export async function mountHomepageTune() {
   await getDialRoot();
-  const intro = document.querySelector(".intro");
+  const homepage = document.querySelector(".homepage");
+  const nav = homepage.querySelector("#nav");
+  const select = (options, defaultValue) => ({
+    type: "select", options: options.map(value => ({ value, label: value })), default: defaultValue,
+  });
   const sliders = [
     ["Text width (%)", "--text-width", 38, 20, 100, "%"],
     ["Intro offset (px)", "--intro-offset", 0, 0, 140, "px"],
+    ["Intro top (px)", "--intro-top", 24, 0, 220, "px"],
+    ["Intro left (px)", "--intro-left", 32, 0, 160, "px"],
+    ["Intro right (px)", "--intro-right", 32, 0, 160, "px"],
+    ["Heading size (px)", "--heading-size", 32, 16, 96, "px"],
     ["Section spacing (px)", "--section-gap", 24, 0, 100, "px"],
     ["Socials spacing (px)", "--social-gap", 20, 0, 100, "px"],
   ];
   const config = Object.fromEntries(sliders.map(([label, , value, min, max]) => [
     label, [value, min, max, 1],
   ]));
+  config["Heading font"] = select(["Outfit", "Stevie Sans Book", "Bricolage Grotesque"], "Outfit");
+  config["Nav alignment"] = select(["Left", "Center", "Right"], "Right");
   const kit = createDialKit("Homepage", config, {
     id: "homepage",
     persist: { key: "grass-website-homepage" },
@@ -93,9 +103,11 @@ export async function mountHomepageTune() {
   function apply(values) {
     for (const [label, property, defaultValue, , , unit] of sliders) {
       const value = values[label];
-      if (value === defaultValue) intro.style.removeProperty(property);
-      else intro.style.setProperty(property, value + unit);
+      if (value === defaultValue) homepage.style.removeProperty(property);
+      else homepage.style.setProperty(property, value + unit);
     }
+    homepage.style.setProperty("--heading-font", `"${values["Heading font"]}"`);
+    nav.dataset.align = values["Nav alignment"].toLowerCase();
   }
   kit.subscribe(apply);
   createDialKit("Scroll motion", motionDials, {
