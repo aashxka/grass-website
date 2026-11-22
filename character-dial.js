@@ -1,5 +1,5 @@
 import {createDialKit} from './vendor/dialkit/index.js';
-import {fetchControls} from './fetch.js';
+import {fetchControls} from './fetch.js?v=scarf-ball';
 export async function mountCharacterDial(scene,game) {
   const controls = {
     'Character size': ['subject', .5, 3, .05],

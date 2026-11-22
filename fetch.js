@@ -1,6 +1,7 @@
 const clamp=t=>Math.max(0,Math.min(1,t));
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>t*t*(3-2*t);
+const scarfOrange='#c65a13';
 
 export const fetchControls={
   Dog:{
@@ -15,18 +16,20 @@ export const fetchControls={
     'Size':[.7,.55,2,.05], 'Beside dog (m)':[.4,.3,1.4,.02],
     'Rest height (m)':[0.27,.05,.65,.01], 'Arc height (px)':[220,30,350,5],
     'Flight time (s)':[1.15,.45,2.5,.05], 'Bounce height (px)':[13,0,85,1],
-    'Ring gap (px)':[3.5,0,30,.5], 'Glow opacity':[0.25,0,1,.01], 'Pulse rate (Hz)':[0.73,0,3,.01],
+    'Ring gap (px)':[3.5,0,30,.5], 'Ring colour':{type:'color',default:scarfOrange},
+    'Ring opacity':[.55,0,1,.01], 'Glow opacity':[0.25,0,1,.01], 'Pulse rate (Hz)':[0.73,0,3,.01],
     'Layer blur (px)':[5.5,0,14,.25], 'Glow rate (Hz)':[1.18,0,3,.01]
   }
 };
 export function createFetch(stage,reduced,gl,program,throwTiming) {
-  const settings=Object.fromEntries(Object.entries(fetchControls).map(([name,group])=>[name,Object.fromEntries(Object.entries(group).map(([k,v])=>[k,v[0]]))]));
-  const layer=document.createElement('canvas');
-  layer.setAttribute('aria-hidden','true');layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:1;pointer-events:none';
-
-  const ballLayer=document.createElement('canvas');
-  const ctx=layer.getContext('2d'), ink=ballLayer.getContext('2d');
-  const sprites=[layer,ballLayer].map(source=>({source,texture:gl.createTexture(),rect:null}));
+  const settings=Object.fromEntries(Object.entries(fetchControls).map(([name,group])=>[name,Object.fromEntries(Object.entries(group).map(([k,v])=>[k,Array.isArray(v)?v[0]:v.default]))]));
+  const sprites=Array.from({length:3},()=>{
+    const source=document.createElement('canvas');
+    return {source,context:source.getContext('2d'),texture:gl.createTexture(),rect:null,alphaCutoff:.12};
+  });
+  const [dogSprite,ballSprite,ringSprite]=sprites;
+  const {context:ctx}=dogSprite, {context:ink}=ballSprite, {context:ring}=ringSprite;
+  ringSprite.alphaCutoff=0;
   const vao=gl.createVertexArray();
   const material=program(`#version 300 es
     precision highp float;
@@ -37,7 +40,8 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
       gl_Position=vec4((2.*screen-1.)*vec2(1.,-1.)*depth,-pv[2][2]*depth+pv[3][2],depth);}
   `,`#version 300 es
     precision highp float;uniform sampler2D sprite;uniform float depth;
-    uniform vec4 neck; uniform vec2 extent; uniform float pitch;
+    uniform vec4 neck; uniform vec2 extent; uniform float pitch, alphaCutoff;
+    uniform bool blendRing;
     in vec2 uv;out vec4 color;
     void main(){
       vec2 sampleUV=uv;
@@ -51,13 +55,14 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
         sampleUV=neck.xy+src/extent;
       }
       vec4 texel=texture(sprite,sampleUV);
-      if(texel.a < .12) discard;
-      color=vec4(texel.rgb,log(depth/4.)/log(60.));}
+      if(texel.a <= alphaCutoff) discard;
+      color=vec4(texel.rgb,blendRing ? texel.a : log(depth/4.)/log(60.));}
   `);
-  function render(pv,w,h){
+  function renderSprites(pv,w,h,items,blendRing){
     gl.useProgram(material.p);gl.bindVertexArray(vao);gl.activeTexture(gl.TEXTURE7);
     const u=material.u;gl.uniform1i(u.sprite,7);gl.uniform2f(u.viewport,w,h);gl.uniformMatrix4fv(u.pv,false,pv);
-    for(const item of sprites){
+    gl.uniform1i(u.blendRing,blendRing?1:0);
+    for(const item of items){
       if(!item.rect)continue;
       gl.bindTexture(gl.TEXTURE_2D,item.texture);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
@@ -66,16 +71,30 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,item.source);
       gl.uniform1f(u.pitch,item.pitch||0);
+      gl.uniform1f(u.alphaCutoff,item.alphaCutoff);
       if(item.pitch){gl.uniform4fv(u.neck,item.neck);gl.uniform2f(u.extent,item.rect[2],item.rect[3]);}
       gl.uniform4fv(u.rect,item.rect);gl.uniform1f(u.depth,item.depth);
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     }
   }
-  function prepare(index,x,y,w,h,d,ratio){
-    const item=sprites[index],c=item.source;
+  function render(pv,w,h){
+    renderSprites(pv,w,h,[dogSprite,ballSprite],false);
+  }
+  function renderRing(pv,w,h){
+    if(!ringSprite.rect)return;
+    gl.enable(gl.BLEND);
+    gl.depthMask(false);
+    // Preserve the depth encoded in the scene alpha for the post-processing pass.
+    gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ZERO,gl.ONE);
+    renderSprites(pv,w,h,[ringSprite],true);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+  function prepare(item,x,y,w,h,d,ratio){
+    const c=item.source;
     const width=Math.ceil(w*ratio),height=Math.ceil(h*ratio);
     if(c.width!==width||c.height!==height){c.width=width;c.height=height;}
-    const g=index===0?ctx:ink;
+    const g=item.context;
     g.setTransform(ratio,0,0,ratio,0,0);g.clearRect(0,0,width/ratio,height/ratio);
     item.rect=[x,y,w,h];item.depth=d;
   }
@@ -102,9 +121,9 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
   function ball(x,y,r,angle){
     ink.save();ink.translate(x,y);ink.beginPath();ink.arc(0,0,r,0,Math.PI*2);ink.clip();
     const paint=ink.createRadialGradient(-r*.42,-r*.52,0,0,0,r*1.3);
-    paint.addColorStop(0,'#96d8ff');paint.addColorStop(.45,'#2588fa');paint.addColorStop(1,'#164e9a');
+    paint.addColorStop(0,'#f5b271');paint.addColorStop(.45,scarfOrange);paint.addColorStop(1,'#733209');
     ink.fillStyle=paint;ink.fillRect(-r,-r,2*r,2*r);
-    ink.rotate(angle);ink.lineWidth=r*.21;ink.strokeStyle='#296dca';ink.beginPath();
+    ink.rotate(angle);ink.lineWidth=r*.21;ink.strokeStyle='#a34812';ink.beginPath();
     ink.moveTo(-r,-r*.52);ink.bezierCurveTo(-r*.1,-r*.65,-r*.14,r*.46,-r*.43,r*1.1);
     ink.moveTo(r*.25,-r);ink.bezierCurveTo(r*.48,-r*.5,r*.28,r*.36,r,r*.48);ink.stroke();ink.restore();
   }
@@ -174,7 +193,9 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
     const frame=loaded(pose)?pose:7, im=images[frame];
     const dw=poseSize[frame][0]*factor,dh=poseSize[frame][1]*factor;
     const margin=Math.ceil(dw*.18+5);
-    prepare(0,dog.x-dw/2-margin,dog.y-dh-margin-lift,dw+2*margin,dh+2*margin+lift,dog.d,pixelRatio);
+    // The opening sit has a baked soft halo. Use its solid silhouette.
+    dogSprite.alphaCutoff=frame===7?.60:.12;
+    prepare(dogSprite,dog.x-dw/2-margin,dog.y-dh-margin-lift,dw+2*margin,dh+2*margin+lift,dog.d,pixelRatio);
     ctx.save();ctx.translate(dw/2+margin,dh+margin);ctx.scale(direction,1);
     ctx.fillStyle='rgba(53,57,26,.18)';ctx.beginPath();ctx.ellipse(direction*5,lift,dw*.27,Math.max(1,factor*7),.05,0,2*Math.PI);ctx.fill();
     ctx.filter='brightness('+((.81+.19*dog.light)*D.Exposure)+') sepia('+D['Coat warmth']+') hue-rotate('+D['Coat hue (°)']+'deg) saturate('+D.Saturation+')';
@@ -232,23 +253,26 @@ export function createFetch(stage,reduced,gl,program,throwTiming) {
     const spread=ringRadius+ringWidth+B['Layer blur (px)']*2;
     const pad=Math.ceil(spread+2);
     const ballDepth=atEnd.d*(atEnd.ppm*.105*B.Size)/(radius/(1+.075*pulse));
-    prepare(1,point.x-pad,point.y-pad,2*pad,2*pad,ballDepth-.015,pixelRatio);
-    if(phase==='wait'){
-      ink.save();
-      ink.strokeStyle=ink.shadowColor='#2588fa';
-      ink.globalAlpha=B['Glow opacity']*(.8+.2*Math.cos((reduced?0:time)*2*Math.PI*B['Glow rate (Hz)']));
-      ink.shadowBlur=B['Layer blur (px)']*pixelRatio;
-      ink.lineWidth=ringWidth;
+    prepare(ballSprite,point.x-pad,point.y-pad,2*pad,2*pad,ballDepth-.015,pixelRatio);
+    ringSprite.rect=null;
+    if(phase==='wait'&&B['Ring opacity']>0){
+      prepare(ringSprite,point.x-pad,point.y-pad,2*pad,2*pad,ballDepth-.015,pixelRatio);
+      ring.save();
+      ring.strokeStyle=B['Ring colour'];
+      ring.shadowColor=`color-mix(in srgb, ${B['Ring colour']} ${B['Glow opacity']*100}%, transparent)`;
+      ring.globalAlpha=B['Ring opacity']*(.8+.2*Math.cos((reduced?0:time)*2*Math.PI*B['Glow rate (Hz)']));
+      ring.shadowBlur=B['Layer blur (px)']*pixelRatio;
+      ring.lineWidth=ringWidth;
       for(let quadrant=0;quadrant<4;quadrant++){
         const start=quadrant*Math.PI/2;
-        ink.beginPath();ink.arc(pad,pad,ringRadius,start+.12,start+Math.PI/2-.12);ink.stroke();
+        ring.beginPath();ring.arc(pad,pad,ringRadius,start+.12,start+Math.PI/2-.12);ring.stroke();
       }
-      ink.restore();
+      ring.restore();
     }
     ink.save();ink.filter='brightness('+(.87+.13*atEnd.light)+')';
     if(phase!=='opening'||throwAge>=0)ball(pad,pad,radius,angle);
     ink.restore();previousBall=point;
     button.hidden=phase!=='wait';button.style.left=point.x+'px';button.style.top=point.y+'px';
   }
-  return {settings,paws,ballContact,draw,render,replay,get throwAge(){return throwAge<0?null:throwAge}};
+  return {settings,paws,ballContact,draw,render,renderRing,replay,get throwAge(){return throwAge<0?null:throwAge}};
 }

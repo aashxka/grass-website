@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/outfit.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="homepage.css">
+<link rel="stylesheet" href="homepage.css?v=scarf-ball">
 <style>
   @font-face { font-family: "Stevie Sans Book"; src: url("fonts/stevie-sans-book.woff") format("woff"); font-weight: 400; font-style: normal; font-display: block; }
   :root {
@@ -251,13 +251,13 @@
 <script type="module">
 const tune = new URLSearchParams(location.search).get("tune");
 if (tune !== null && tune !== "0") {
-  import("./tune.js").then(({ mountHomepageTune }) => mountHomepageTune())
+  import("./tune.js?v=scarf-ball").then(({ mountHomepageTune }) => mountHomepageTune())
     .catch(error => console.warn("Homepage controls could not load", error));
 }
 </script>
 
 <script type="module">
-import { createFetch } from "./fetch.js?v=opening-delay";
+import { createFetch } from "./fetch.js?v=scarf-ball";
 import { createPhotographer, createFigure, FIGURE_HEIGHT, sampleThrow, throwTiming } from "./photographer.js?v=opening-delay";
 import { grassBrush } from "./touch.js";
 import { buildDeskSet, deskVS, deskFS, SET_GLSL } from "./desk.js?crt=2";
@@ -303,8 +303,8 @@ const GIRL = { xs: 1170, d: 15.5, hPx: 175, imgW: 445, imgH: 345 };
 // Palette sampled from the banner
 // Every colour is editable in the Colours panel. Each maps to one shader uniform.
 const PAL_DEFAULT = {
-  sky: "#ffffff", root: "#3d4a16", lower: "#2f3b07", midBlade: "#313e0b", shade: "#114321", sunlit: "#445414",
-  tipGreen: "#577214", straw: "#c4a99f", lav: "#b28e9e", lavBright: "#cea8b6", base: "#425616", dark: "#59612b",
+  sky: "#ffffff", root: "#4a591d", lower: "#2f3b07", midBlade: "#313e0b", shade: "#2c4619", sunlit: "#495a14",
+  tipGreen: "#577214", straw: "#77654c", lav: "#5c5944", lavBright: "#574b24", base: "#425616", dark: "#59612b",
   wood: "#c76d29", plastic: "#d9cbb1", fabric: "#bb7847",
 };
 const PAL_INFO = [
@@ -319,7 +319,7 @@ const PAL = { ...PAL_DEFAULT };
 const hiddenLayers = new Set();
 const DEFAULTS = {
   view: 0, frame: 1,
-  deskX: 2.6, deskDepth: -1.1, lift: 0.02, gsize: 1.38, angle: -31, monitor: 1.4,
+  deskX: 2.85, deskDepth: -1.1, lift: 0.02, gsize: 1.38, angle: -31, monitor: 1.4,
   mugX: 0.13, mugZ: 0, mugSize: 1,
   hills: 0, depth: 1.29, background: 80, humps: 1, hillW: 1.91,
   haze: 1.29, overall: 1.11, dof: 0, glow: 1,
@@ -1385,6 +1385,7 @@ function render() {
   gl.uniform1i(progGround.u.uView, P.view);
   gl.bindVertexArray(vaoGround);
   gl.drawElements(gl.TRIANGLES, gi.length, gl.UNSIGNED_INT, 0);
+  if (P.view === 0) fetchGame.renderRing(PV,W/dpr,H/dpr);
 
   // 3) resolve, build the blur pyramid, finish to the canvas
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.fb);
@@ -1514,7 +1515,7 @@ requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=scarf-ball").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {

@@ -8,7 +8,7 @@
 
 .homepage {
   --page-edge: 32px;
-  --page-top: calc(var(--page-edge) + env(safe-area-inset-top, 0px));
+  --page-top: calc(24px + env(safe-area-inset-top, 0px));
   position: relative;
   z-index: 6;
   pointer-events: none;

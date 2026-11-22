@@ -154,7 +154,7 @@ export async function mountTune(h,game) {
   }
 
   const root = await getDialRoot();
-  const {mountCharacterDial}=await import("./character-dial.js");
+  const {mountCharacterDial}=await import("./character-dial.js?v=scarf-ball");
   await mountCharacterDial(P,game);
   let style = P.hills;
   const kit = createDialKit("Grass hills", config(), {
