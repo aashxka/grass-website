@@ -58,7 +58,8 @@
   margin-inline: auto;
 }
 
-.homepage:has(.nav[data-align="left"]) .home-scroll {
+.homepage:has(.nav[data-align="left"]) .home-scroll,
+.home-scroll:has(.intro:is([data-position="top-center"], [data-position="top-right"])) {
   padding-top: max(var(--intro-safe-top), calc(var(--page-top) + 68px));
 }
 
@@ -69,6 +70,14 @@
   width: clamp(min(100%, 14rem), var(--text-width, var(--default-text-width)), 100%);
   margin-top: var(--intro-offset, 0px);
 }
+
+.intro[data-position="top-center"] { margin-inline: auto; }
+.intro[data-position="top-right"] { margin-inline-start: auto; }
+
+.intro[data-text-align="center"] { text-align: center; }
+.intro[data-text-align="right"] { text-align: right; }
+.intro[data-text-align="center"] .socials { justify-content: center; }
+.intro[data-text-align="right"] .socials { justify-content: flex-end; }
 
 .intro h1,
 .intro p {
@@ -239,7 +248,8 @@
 
 @media (max-width: 720px) {
   .home-scroll,
-  .homepage:has(.nav[data-align="left"]) .home-scroll {
+  .homepage:has(.nav[data-align="left"]) .home-scroll,
+  .home-scroll:has(.intro:is([data-position="top-center"], [data-position="top-right"])) {
     padding-top: max(var(--intro-safe-top), calc(var(--page-top) + 76px));
   }
   .intro { --default-text-width: min(100%, 26rem); }
