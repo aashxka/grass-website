@@ -15,6 +15,15 @@
 
 .homepage {
   --page-edge: 32px;
+  --text-width: 32%;
+  --intro-offset: 96px;
+  --intro-top: 0px;
+  --intro-left: 160px;
+  --intro-right: 160px;
+  --heading-font: "Gaegu";
+  --heading-size: 48px;
+  --section-gap: 24px;
+  --social-gap: 20px;
   --page-top: calc(24px + env(safe-area-inset-top, 0px));
   position: relative;
   z-index: 6;
@@ -64,7 +73,7 @@
 }
 
 .intro {
-  --default-text-width: max(23rem, 38%);
+  --default-text-width: max(23rem, 32%);
   display: grid;
   gap: var(--section-gap, 24px);
   width: clamp(min(100%, 14rem), var(--text-width, var(--default-text-width)), 100%);
@@ -85,7 +94,7 @@
 }
 
 .intro h1 {
-  font-family: var(--heading-font, "Outfit"), "Stevie Sans Book", system-ui, sans-serif;
+  font-family: var(--heading-font, "Gaegu"), "Stevie Sans Book", system-ui, sans-serif;
   font-size: var(--heading-size, 2rem);
   font-weight: 400;
   line-height: 1.125;

@@ -83,12 +83,12 @@ export async function mountHomepageTune() {
     type: "select", options: options.map(value => ({ value, label: value })), default: defaultValue,
   });
   const sliders = [
-    ["Text width (%)", "--text-width", 38, 20, 100, "%"],
-    ["Intro offset (px)", "--intro-offset", 0, 0, 140, "px"],
-    ["Intro top (px)", "--intro-top", 24, 0, 220, "px"],
-    ["Intro left (px)", "--intro-left", 32, 0, 160, "px"],
-    ["Intro right (px)", "--intro-right", 32, 0, 160, "px"],
-    ["Heading size (px)", "--heading-size", 32, 16, 96, "px"],
+    ["Text width (%)", "--text-width", 32, 20, 100, "%"],
+    ["Intro offset (px)", "--intro-offset", 96, 0, 140, "px"],
+    ["Intro top (px)", "--intro-top", 0, 0, 220, "px"],
+    ["Intro left (px)", "--intro-left", 160, 0, 160, "px"],
+    ["Intro right (px)", "--intro-right", 160, 0, 160, "px"],
+    ["Heading size (px)", "--heading-size", 48, 16, 96, "px"],
     ["Section spacing (px)", "--section-gap", 24, 0, 100, "px"],
     ["Socials spacing (px)", "--social-gap", 20, 0, 100, "px"],
   ];
@@ -96,14 +96,14 @@ export async function mountHomepageTune() {
     label, [value, min, max, 1],
   ]));
   config["Heading font"] = select(
-    ["Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
-    "Outfit",
+    ["Gaegu", "Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
+    "Gaegu",
   );
-  config["Google font family"] = { type: "text", default: "", placeholder: "Exact family name, e.g. Inter" };
+  config["Google font family"] = { type: "text", default: "instrument sans", placeholder: "Exact family name, e.g. Inter" };
   config["Choose desktop font file"] = { type: "action" };
-  config["Intro position"] = select(["Top left", "Top center", "Top right"], "Top left");
-  config["Text alignment"] = select(["Left", "Center", "Right"], "Left");
-  config["Nav alignment"] = select(["Left", "Center", "Right"], "Right");
+  config["Intro position"] = select(["Top left", "Top center", "Top right"], "Top center");
+  config["Text alignment"] = select(["Left", "Center", "Right"], "Center");
+  config["Nav alignment"] = select(["Left", "Center", "Right"], "Center");
   const fontFile = document.createElement("input");
   fontFile.type = "file";
   fontFile.accept = ".woff2,.woff,.ttf,.otf";
@@ -114,7 +114,7 @@ export async function mountHomepageTune() {
 
   const kit = createDialKit("Homepage", config, {
     id: "homepage",
-    persist: { key: "grass-website-homepage" },
+    persist: { key: "grass-website-homepage-v2" },
     onAction: path => {
       if (path === "Choose desktop font file") fontFile.click();
     },
