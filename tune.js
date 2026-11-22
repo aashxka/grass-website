@@ -78,6 +78,7 @@ export async function mountHomepageTune() {
   await getDialRoot();
   const homepage = document.querySelector(".homepage");
   const nav = homepage.querySelector("#nav");
+  const intro = homepage.querySelector(".intro");
   const select = (options, defaultValue) => ({
     type: "select", options: options.map(value => ({ value, label: value })), default: defaultValue,
   });
@@ -95,6 +96,8 @@ export async function mountHomepageTune() {
     label, [value, min, max, 1],
   ]));
   config["Heading font"] = select(["Outfit", "Stevie Sans Book", "Bricolage Grotesque"], "Outfit");
+  config["Intro position"] = select(["Top left", "Top center", "Top right"], "Top left");
+  config["Text alignment"] = select(["Left", "Center", "Right"], "Left");
   config["Nav alignment"] = select(["Left", "Center", "Right"], "Right");
   const kit = createDialKit("Homepage", config, {
     id: "homepage",
@@ -107,6 +110,8 @@ export async function mountHomepageTune() {
       else homepage.style.setProperty(property, value + unit);
     }
     homepage.style.setProperty("--heading-font", `"${values["Heading font"]}"`);
+    intro.dataset.position = values["Intro position"].toLowerCase().replace(" ", "-");
+    intro.dataset.textAlign = values["Text alignment"].toLowerCase();
     nav.dataset.align = values["Nav alignment"].toLowerCase();
   }
   kit.subscribe(apply);
