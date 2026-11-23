@@ -671,7 +671,11 @@ function closeSheet() {
   panel.style.transform = "";
   const sheetBox = panel.getBoundingClientRect();
   const cardBox = visibleBox(entry.card);
-  const target = cardBox ?? zoomBox(sheetBox);
+  let target = cardBox ?? zoomBox(sheetBox);
+  if (entry.about && cardBox) {
+    const navBottom = aboutLink.closest("#nav").getBoundingClientRect().bottom;
+    target = { left: cardBox.left + cardBox.width / 2, top: navBottom, width: 0, height: 0 };
+  }
   const current = `translate3d(${shown.m41}px, ${shown.m42}px, 0px) scale(${shown.a}, ${shown.d})`;
 
   const animations = [];
