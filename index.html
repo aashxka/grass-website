@@ -8,8 +8,10 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
-<link rel="preload" href="fonts/outfit.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="homepage.css?v=feedback">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400&display=swap">
+<link rel="stylesheet" href="homepage.css?v=homepage-defaults">
 <script type="importmap">
 {
   "imports": {
@@ -65,12 +67,22 @@
     color: #646464; text-decoration: none; white-space: nowrap;
     transition: color 200ms ease, scale var(--press); -webkit-tap-highlight-color: transparent; outline: none;
   }
+  .nav-label,
+  .nav a::after { transition: opacity 160ms var(--ease-out); }
+  .nav a::after {
+    content: attr(data-label); position: absolute; inset: 0;
+    display: grid; place-items: center; font-weight: 700;
+    opacity: 0; pointer-events: none;
+  }
+  .nav a:not([aria-current]):focus-visible .nav-label { opacity: 0; }
+  .nav a:not([aria-current]):focus-visible::after { opacity: 1; }
   .nav a:active { scale: 0.97; }
   .nav a[aria-current="page"] { color: #1b1b1b; }
   .nav a:focus-visible { outline: 2px solid #1b1b1b; outline-offset: -2px; }
   @media (hover: hover) and (pointer: fine) {
     .nav a:not([aria-current]):hover { color: #424242; }
-    .nav:has(a:hover) .nav-thumb { opacity: 0.5; }
+    .nav a:not([aria-current]):hover .nav-label { opacity: 0; }
+    .nav a:not([aria-current]):hover::after { opacity: 1; }
   }
   .nav-thumb {
     position: absolute; left: 0; top: 5px; height: var(--nav-item-height); width: 0; border-radius: 999px;
@@ -152,6 +164,7 @@
     canvas { transition: none; }
     .nav-thumb { transition: none; }
     .nav a:active { scale: none; }
+    .nav-label, .nav a::after { transition: none; }
   }
 </style>
 </head>
@@ -165,20 +178,20 @@
 <p class="seattle" id="seattle"></p>
 </div>
 <div class="homepage">
-<nav class="nav" id="nav" aria-label="Main">
+<nav class="nav" id="nav" aria-label="Main" data-align="right">
   <span class="nav-thumb" aria-hidden="true" hidden></span>
-  <a href="#work" data-label="Work">Work</a>
-  <a href="#about" data-label="About">About</a>
-  <a href="#experiments" data-label="Experiments">Experiments</a>
-  <a href="#photos" data-label="Photos">Photos</a>
+  <a href="#work" data-label="Work" aria-label="Work"><span class="nav-label">Work</span></a>
+  <a href="#about" data-label="About" aria-label="About"><span class="nav-label">About</span></a>
+  <a href="#experiments" data-label="Experiments" aria-label="Experiments"><span class="nav-label">Experiments</span></a>
+  <a href="#photos" data-label="Photos" aria-label="Photos"><span class="nav-label">Photos</span></a>
 </nav>
 <main>
 <div class="home-scroll" id="home">
-<section class="intro" aria-labelledby="intro-title">
+<section class="intro" aria-labelledby="intro-title" data-position="top-left" data-text-align="left">
   <h1 id="intro-title">aashika ashok</h1>
-  <p>I like making digital things that make life a little simpler, look considered, and leave people with a quiet “wait, that was nice, give me more.”</p>
-  <p>Previously, I did this across e-commerce, AI tools and legacy systems and recently became a Master of Design from UW.</p>
-  <div class="socials" role="group" aria-label="Contact">
+  <p id="intro-first">Product designer with an obsession for making complex things feel simple and a love for motion and visual craft.&#10;</p>
+  <p id="intro-second">Previously, I did this across e-commerce, AI tools and legacy systems and recently became a Master of Design from UW.</p>
+  <div class="socials" id="intro-contact" role="group" aria-label="Contact">
     <a class="social-link" href="https://www.linkedin.com/in/aashikaashok/" target="_blank" rel="noopener">
       <svg class="social-icon linkedin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path pathLength="1" d="M7 10V17"/>
@@ -186,7 +199,7 @@
         <path d="M7.125 6.75H7M7.25 6.75C7.25 6.88807 7.13807 7 7 7C6.86193 7 6.75 6.88807 6.75 6.75C6.75 6.61193 6.86193 6.5 7 6.5C7.13807 6.5 7.25 6.61193 7.25 6.75Z"/>
         <path d="M3 12C3 7.75736 3 5.63604 4.31802 4.31802C5.63604 3 7.75736 3 12 3C16.2426 3 18.364 3 19.682 4.31802C21 5.63604 21 7.75736 21 12C21 16.2426 21 18.364 19.682 19.682C18.364 21 16.2426 21 12 21C7.75736 21 5.63604 21 4.31802 19.682C3 18.364 3 16.2426 3 12Z"/>
       </svg>
-      <span>LinkedIn</span>
+      <span class="social-label" data-intro-label="LinkedIn">LinkedIn</span>
     </a>
     <span aria-hidden="true"></span>
     <button class="social-link" type="button" data-copy="aashikaashok.work@gmail.com" aria-label="Email (copy address)">
@@ -195,7 +208,7 @@
         <path pathLength="1" stroke-linecap="round" stroke-linejoin="round" d="M15.25 10.0002V12.5002C15.25 13.3286 15.9216 14.0002 16.75 14.0002C17.5784 14.0002 18.25 13.3286 18.25 12.5002V12C18.25 9.23858 16.0114 7 13.25 7C10.4886 7 8.25 9.23858 8.25 12C8.25 14.7614 10.4886 17 13.25 17C14.3758 17 15.4147 16.6279 16.2505 16M15.25 12.0002C15.25 13.1048 14.3546 14.0002 13.25 14.0002C12.1454 14.0002 11.25 13.1048 11.25 12.0002C11.25 10.8956 12.1454 10.0002 13.25 10.0002C14.3546 10.0002 15.25 10.8956 15.25 12.0002Z"/>
         <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6L2 6M4.5 12L2 12M4.5 18H2"/>
       </svg>
-      <span>Email</span>
+      <span class="social-label" data-intro-label="Email">Email</span>
       <span class="copied" aria-hidden="true"></span>
     </button>
     <span aria-hidden="true"></span>
@@ -204,7 +217,7 @@
         <path d="M12.8809 7.01656L17.6538 8.28825M11.8578 10.8134L14.2442 11.4492M11.9765 17.9664L12.9311 18.2208C15.631 18.9401 16.981 19.2998 18.0445 18.6893C19.108 18.0787 19.4698 16.7363 20.1932 14.0516L21.2163 10.2548C21.9398 7.57005 22.3015 6.22768 21.6875 5.17016C21.0735 4.11264 19.7235 3.75295 17.0235 3.03358L16.0689 2.77924C13.369 2.05986 12.019 1.70018 10.9555 2.31074C9.89196 2.9213 9.53023 4.26367 8.80678 6.94841L7.78366 10.7452C7.0602 13.4299 6.69848 14.7723 7.3125 15.8298C7.92652 16.8874 9.27651 17.2471 11.9765 17.9664Z"/>
         <path d="M12 20.9462L11.0477 21.2055C8.35403 21.939 7.00722 22.3057 5.94619 21.6832C4.88517 21.0607 4.52429 19.692 3.80253 16.9546L2.78182 13.0833C2.06006 10.3459 1.69918 8.97718 2.31177 7.89892C2.84167 6.96619 4 7.00015 5.5 7.00003"/>
       </svg>
-      <span>Resume</span>
+      <span class="social-label" data-intro-label="Resume">Resume</span>
     </a>
     <span class="copy-status" role="status"></span>
   </div>
@@ -287,7 +300,7 @@ if (new URLSearchParams(location.search).has("annotate")) {
 <script type="module">
 const tune = new URLSearchParams(location.search).get("tune");
 if (tune !== null && tune !== "0") {
-  import("./tune.js?v=feedback").then(({ mountHomepageTune }) => mountHomepageTune())
+  import("./tune.js?v=homepage-defaults").then(({ mountHomepageTune }) => mountHomepageTune())
     .catch(error => console.warn("Homepage controls could not load", error));
 }
 </script>
@@ -686,7 +699,7 @@ const bladeVS = `#version 300 es
   uniform mat4 uPV;
   uniform vec3 uCam;
   uniform float uTime, uLen, uDensity, uWind, uGust, uLavAmt, uFpx, uSoftSh;
-  uniform sampler2D uWindTex;
+  uniform sampler2D uWindTex; uniform vec2 uFlow;
   uniform int uDbg;
   out vec3 vCol;
   out float vD;
@@ -728,7 +741,7 @@ const bladeVS = `#version 300 es
     float bend = aQ.x
       + uWind * ((.16 + .8 * g) * (1.05 - .5 * stiff) + .55 * (g - gLag) * (1. - .4 * stiff))
       + uWind * (.06 + .16 * g) * sway;
-    vec3 wdir = normalize(vec3(1., 0., .18));
+    vec3 wdir = normalize(vec3(uFlow.x, 0., uFlow.y) + vec3(.00001,0.,0.));
     float yaw = aP.z;
     vec3 lean = vec3(cos(yaw) * wdir.x - sin(yaw) * wdir.z, 0., sin(yaw) * wdir.x + cos(yaw) * wdir.z);
     vec3 bdir = normalize(mix(lean, wdir, clamp(.3 + uWind * (.25 + .6 * g), 0., 1.)));
@@ -867,10 +880,11 @@ const windVS = `#version 300 es
   layout(location = 0) in vec2 aP; out vec2 vUV; void main(){ vUV = aP * .5 + .5; gl_Position = vec4(aP, 0., 1.); }`;
 const windFS = `#version 300 es
   precision highp float;
-  in vec2 vUV; uniform vec4 uDom; uniform float uTime, uGust, uWindX, uWindSp; out vec4 o;
+  in vec2 vUV; uniform vec4 uDom; uniform float uTime, uGust, uWindX, uWindSp; uniform vec2 uFlow; out vec4 o;
   ${NOISE}
   float gust(vec2 p, float t, float run){
-    // run = metres the air has travelled (Seattle's live wind speed, integrated); bands roll left -> right
+    // Rotate the gust field into downwind and crosswind coordinates.
+    p = vec2(dot(p, vec2(uFlow.x,-uFlow.y)), dot(p, vec2(uFlow.y,uFlow.x)));
     vec2 q = vec2((p.x - run) / 7.5 + .12 * p.y / 9., p.y / 24.);
     float n = fbm(q + vec2(0., t * .04));
     return smoothstep(.44 - .08 * uGust, .82, n) * min(uGust, 1.);
@@ -1362,6 +1376,7 @@ function render() {
   gl.uniform4f(progWind.u.uDom, HM.x0, HM.x1, HM.ld0, HM.ld1);
   gl.uniform1f(progWind.u.uTime, simTime);
   gl.uniform1f(progWind.u.uGust, P.gust);
+  gl.uniform2f(progWind.u.uFlow, AIR.hairX, AIR.hairY);
   gl.uniform1f(progWind.u.uWindX, windRun); gl.uniform1f(progWind.u.uWindSp, AIR.speed);
   gl.bindVertexArray(vaoTri); gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -1407,6 +1422,7 @@ function render() {
     gl.uniform1f(u.uLen, P.len);
     gl.uniform1f(u.uDensity, P.density / bladeCap);   // thins within the built set; 1 = draw them all
     gl.uniform1i(u.uBrush,4);
+    gl.uniform2f(u.uFlow, AIR.hairX, AIR.hairY);
     gl.uniform1f(u.uWind, P.wind);
     gl.uniform1f(u.uGust, P.gust);
     gl.uniform1f(u.uLavAmt, P.lav);
@@ -1468,7 +1484,7 @@ function retarget() {
   AIR.target.hairY = Math.cos(radians);
 }
 function applyAir(speed, gusts) {
-  AIR.base = { speed: clamp(speed, 0.3, 25), wind: clamp(speed / REF_SPEED, 0.12, 2), gust: clamp(gusts / REF_GUST, 0.15, 2) };
+  AIR.base = { speed: clamp(speed, 0, 25), wind: clamp(speed / REF_SPEED, 0, 2), gust: clamp(gusts / REF_GUST, 0.15, 2) };
   retarget();
 }
 async function fetchSeattleWind() {
@@ -1561,7 +1577,7 @@ requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=feedback").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=homepage-defaults").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {

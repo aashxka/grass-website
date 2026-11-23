@@ -5,20 +5,20 @@ const scarfOrange='#c65a13';
 
 export const fetchControls={
   Dog:{
-    'Size':[1.25,.55,1.7,.05], 'Left end (%)':[17,5,45,1], 'Right end (%)':[88,55,95,1],
-    'Ridge depth (m)':[-1.35,-1.5,1.5,.05], 'Paw height (m)':[0.27,0,.55,.01],
+    'Size':[1.05,.55,1.7,.05], 'Left end (%)':[21,5,45,1], 'Right end (%)':[88,55,95,1],
+    'Ridge depth (m)':[-0.75,-1.5,1.5,.05], 'Paw height (m)':[0.21,0,.55,.01],
     'Coat warmth':[.2,0,1,.01], 'Coat hue (°)':[0,-40,40,1],
-    'Saturation':[.87,.35,1.5,.01], 'Exposure':[1.03,.55,1.6,.01], 'Grass pressure':[1.4,0,2,.05],
+    'Saturation':[.87,.35,1.5,.01], 'Exposure':[1.03,.55,1.6,.01], 'Grass pressure':[1,0,2,.05],
     'Run speed (×)':[1.15,.4,2.5,.05], 'Gallop tempo (×)':[.95,.5,2,.05],
     'Sit before rising (s)':[.1,.1,3,.1], 'Balance hold (s)':[1.4,.1,3,.05]
   },
   Ball:{
     'Size':[.7,.55,2,.05], 'Beside dog (m)':[.4,.3,1.4,.02],
-    'Rest height (m)':[0.27,.05,.65,.01], 'Arc height (px)':[220,30,350,5],
+    'Rest height (m)':[0.23,.05,.65,.01], 'Arc height (px)':[220,30,350,5],
     'Flight time (s)':[1.15,.45,2.5,.05], 'Bounce height (px)':[13,0,85,1],
-    'Ring gap (px)':[3.5,0,30,.5], 'Ring colour':{type:'color',default:scarfOrange},
-    'Ring opacity':[.55,0,1,.01], 'Glow opacity':[0.25,0,1,.01], 'Pulse rate (Hz)':[0.73,0,3,.01],
-    'Layer blur (px)':[5.5,0,14,.25], 'Glow rate (Hz)':[1.18,0,3,.01]
+    'Ring gap (px)':[3.5,0,30,.5], 'Ring colour':{type:'color',default:'#fce3d7'},
+    'Ring opacity':[.6,0,1,.01], 'Glow opacity':[0.25,0,1,.01], 'Pulse rate (Hz)':[1.04,0,3,.01],
+    'Layer blur (px)':[5.5,0,14,.25], 'Glow rate (Hz)':[0.89,0,3,.01]
   }
 };
 export function createFetch(stage,reduced,gl,program,throwTiming) {

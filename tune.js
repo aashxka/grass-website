@@ -74,6 +74,106 @@ function getDialRoot() {
   return dialRoot;
 }
 
+let desktopFontDatabase;
+function openDesktopFontDatabase() {
+  desktopFontDatabase ??= new Promise((resolve, reject) => {
+    const request = indexedDB.open("portfolio-homepage-fonts", 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("fonts");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  return desktopFontDatabase;
+}
+
+function createIntroFontControl(element, fallback) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".woff2,.woff,.ttf,.otf";
+  const desktopFamily = `Portfolio desktop ${element.id}`;
+  let desktopFace;
+  let fontRevision = 0;
+  let googleFamily = "";
+  let googleStylesheet;
+  let googleTimer;
+
+  async function applyDesktopFont(data, revision) {
+    const face = await new FontFace(desktopFamily, data).load();
+    if (revision !== fontRevision) return false;
+    if (desktopFace) document.fonts.delete(desktopFace);
+    desktopFace = face;
+    document.fonts.add(face);
+    return true;
+  }
+
+  return {
+    choose: () => input.click(),
+    async restore(refresh) {
+      const revision = fontRevision;
+      try {
+        const database = await openDesktopFontDatabase();
+        const store = database.transaction("fonts").objectStore("fonts");
+        const request = store.get(element.id);
+        request.onsuccess = async () => {
+          try {
+            if (request.result && await applyDesktopFont(request.result, revision)) refresh();
+          } catch (error) {
+            console.warn("Saved desktop font could not load", error);
+          }
+        };
+      } catch (error) {
+        console.warn("Saved desktop fonts are unavailable", error);
+      }
+    },
+    onChoose(selectDesktop) {
+      input.addEventListener("change", async () => {
+        const file = input.files[0];
+        input.value = "";
+        if (!file) return;
+        const revision = ++fontRevision;
+        let data;
+        try {
+          data = await file.arrayBuffer();
+          if (!await applyDesktopFont(data, revision)) return;
+        } catch {
+          if (revision === fontRevision) alert("This font could not be loaded. Choose a WOFF2, WOFF, TTF, or OTF file.");
+          return;
+        }
+        selectDesktop();
+        try {
+          const database = await openDesktopFontDatabase();
+          if (revision !== fontRevision) return;
+          const transaction = database.transaction("fonts", "readwrite");
+          transaction.objectStore("fonts").put(data, element.id);
+          transaction.onabort = () => console.warn("Desktop font could not be saved for the next visit", transaction.error);
+        } catch (error) {
+          console.warn("Desktop font could not be saved for the next visit", error);
+        }
+      });
+    },
+    apply(selection, requestedFamily, installedFamily = "") {
+      const nextGoogleFamily = selection === "Google Font" ? requestedFamily.trim() : "";
+      if (nextGoogleFamily !== googleFamily) {
+        googleFamily = nextGoogleFamily;
+        clearTimeout(googleTimer);
+        googleStylesheet?.remove();
+        if (googleFamily) {
+          googleTimer = setTimeout(() => {
+            const params = new URLSearchParams({ family: googleFamily, display: "swap" });
+            googleStylesheet = document.createElement("link");
+            googleStylesheet.rel = "stylesheet";
+            googleStylesheet.href = `https://fonts.googleapis.com/css2?${params}`;
+            document.head.append(googleStylesheet);
+          }, 350);
+        }
+      }
+      let family = selection;
+      if (selection === "Google Font") family = googleFamily || fallback;
+      if (selection === "Desktop font") family = installedFamily.trim() || desktopFace?.family || fallback;
+      element.style.setProperty("--intro-font", `"${CSS.escape(family)}", "${fallback}", system-ui, sans-serif`);
+    },
+  };
+}
+
 export async function mountHomepageTune() {
   await getDialRoot();
   const homepage = document.querySelector(".homepage");
@@ -82,13 +182,20 @@ export async function mountHomepageTune() {
   const select = (options, defaultValue) => ({
     type: "select", options: options.map(value => ({ value, label: value })), default: defaultValue,
   });
+  const fontSelect = defaultValue => select(
+    ["Gaegu", "Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
+    defaultValue,
+  );
+  const text = (defaultValue, placeholder) => ({ type: "text", default: defaultValue, placeholder });
+  const colour = defaultValue => ({ type: "color", default: defaultValue });
+  const googleFont = () => text("instrument sans", "Exact family name, e.g. Inter");
   const sliders = [
-    ["Text width (%)", "--text-width", 38, 20, 100, "%"],
-    ["Intro offset (px)", "--intro-offset", 0, 0, 140, "px"],
-    ["Intro top (px)", "--intro-top", 24, 0, 220, "px"],
-    ["Intro left (px)", "--intro-left", 32, 0, 160, "px"],
-    ["Intro right (px)", "--intro-right", 32, 0, 160, "px"],
-    ["Heading size (px)", "--heading-size", 32, 16, 96, "px"],
+    ["Text width (%)", "--text-width", 24, 20, 100, "%"],
+    ["Intro offset (px)", "--intro-offset", 24, 0, 140, "px"],
+    ["Intro top (px)", "--intro-top", 0, 0, 220, "px"],
+    ["Intro left (px)", "--intro-left", 24, 0, 160, "px"],
+    ["Intro right (px)", "--intro-right", 160, 0, 160, "px"],
+    ["Heading size (px)", "--heading-size", 49, 16, 96, "px"],
     ["Section spacing (px)", "--section-gap", 24, 0, 100, "px"],
     ["Socials spacing (px)", "--social-gap", 20, 0, 100, "px"],
   ];
@@ -96,102 +203,89 @@ export async function mountHomepageTune() {
     label, [value, min, max, 1],
   ]));
   const heading = intro.querySelector("h1");
-  const paragraphs = [...intro.querySelectorAll(":scope > p")];
-  config["Heading text"] = { type: "text", default: heading.textContent };
-  paragraphs.forEach((paragraph, index) => {
-    config["Paragraph " + (index + 1)] = { type: "text", default: paragraph.textContent };
-  });
-  config["Body size (px)"] = [16, 10, 64, 1];
-  config["Body colour"] = { type: "color", default: "#5f5f5f" };
-  config["Body font"] = select(["Stevie Sans Book", "Outfit", "Bricolage Grotesque", "Use heading font", "Other installed font"], "Stevie Sans Book");
-  config["Installed body font name"] = { type: "text", default: "", placeholder: "e.g. Georgia" };
-  config["Heading font"] = select(
-    ["Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
-    "Outfit",
-  );
-  config["Google font family"] = { type: "text", default: "", placeholder: "Exact family name, e.g. Inter" };
+  const contact = intro.querySelector(".socials");
+  const email = contact.querySelector("[data-copy]");
+  const headingFont = createIntroFontControl(heading, "Outfit");
+  const groups = [
+    { name: "First paragraph", element: intro.querySelector("#intro-first"), size: 16, colour: "#5f5f5f" },
+    { name: "Second paragraph", element: intro.querySelector("#intro-second"), size: 16, colour: "#5f5f5f" },
+    { name: "Contact links", element: contact, size: 14, colour: "#1b1b1bb3" },
+  ];
+  config["Heading text"] = text(heading.textContent);
+  config["Heading colour"] = colour("#1b1b1b");
+  config["Heading font"] = fontSelect("Google Font");
+  config["Google font family"] = text("gaegu", "Exact family name, e.g. Inter");
   config["Choose desktop font file"] = { type: "action" };
   config["Intro position"] = select(["Top left", "Top center", "Top right"], "Top left");
   config["Text alignment"] = select(["Left", "Center", "Right"], "Left");
   config["Nav alignment"] = select(["Left", "Center", "Right"], "Right");
-  const fontFile = document.createElement("input");
-  fontFile.type = "file";
-  fontFile.accept = ".woff2,.woff,.ttf,.otf";
-  let desktopFace;
-  let selectedGoogleFamily = "";
-  let googleStylesheet;
-  let googleTimer;
+  const desktopActions = new Map([["Choose desktop font file", headingFont.choose]]);
+  for (const group of groups) {
+    group.font = createIntroFontControl(group.element, "Stevie Sans Book");
+    group.labels = group.element === contact
+      ? [...contact.querySelectorAll(".social-label")].map(label => [label.dataset.introLabel, label])
+      : [["Text", group.element]];
+    config[group.name] = {
+      _collapsed: true,
+      ...Object.fromEntries(group.labels.map(([label, element]) => [label, text(element.textContent)])),
+      "Size (px)": [group.size, 8, 72, 1],
+      Colour: colour(group.colour),
+      Font: fontSelect("Stevie Sans Book"),
+      "Google font family": googleFont(),
+      ...(group.element === contact ? {} : {
+        "Installed body font name": text("", "Exact installed family name"),
+      }),
+      "Choose desktop font file": { type: "action" },
+    };
+    desktopActions.set(`${group.name}.Choose desktop font file`, group.font.choose);
+  }
 
   const kit = createDialKit("Homepage", config, {
     id: "homepage",
-    persist: { key: "grass-website-homepage" },
-    onAction: path => {
-      if (path === "Choose desktop font file") fontFile.click();
-    },
+    persist: { key: "grass-website-homepage-v2" },
+    onAction: path => desktopActions.get(path)?.(),
   });
 
-  fontFile.addEventListener("change", async () => {
-    const file = fontFile.files[0];
-    fontFile.value = "";
-    if (!file) return;
-    try {
-      const face = await new FontFace("Portfolio desktop preview", await file.arrayBuffer()).load();
-      if (desktopFace) document.fonts.delete(desktopFace);
-      desktopFace = face;
-      document.fonts.add(face);
-      kit.setValue("Heading font", "Desktop font");
-      applyHeadingFont(kit.getValues());
-    } catch {
-      alert("This font could not be loaded. Choose a WOFF2, WOFF, TTF, or OTF file.");
-    }
-  });
-
-  function applyHeadingFont(values) {
-    const selection = values["Heading font"];
-    const googleFamily = selection === "Google Font" ? values["Google font family"].trim() : "";
-    if (googleFamily !== selectedGoogleFamily) {
-      selectedGoogleFamily = googleFamily;
-      clearTimeout(googleTimer);
-      googleStylesheet?.remove();
-      if (googleFamily) {
-        googleTimer = setTimeout(() => {
-          const params = new URLSearchParams({ family: googleFamily, display: "swap" });
-          googleStylesheet = document.createElement("link");
-          googleStylesheet.rel = "stylesheet";
-          googleStylesheet.href = "https://fonts.googleapis.com/css2?" + params;
-          document.head.append(googleStylesheet);
-        }, 350);
-      }
-    }
-    let family = selection;
-    if (selection === "Google Font") family = googleFamily || "Outfit";
-    if (selection === "Desktop font") family = desktopFace?.family || "Outfit";
-    homepage.style.setProperty("--heading-font", `"${CSS.escape(family)}", "Outfit"`);
+  function applyText(element, value) {
+    if (value !== element.textContent) element.textContent = value;
   }
+
   function apply(values) {
     for (const [label, property, defaultValue, , , unit] of sliders) {
       const value = values[label];
       if (value === defaultValue) homepage.style.removeProperty(property);
       else homepage.style.setProperty(property, value + unit);
     }
-    applyHeadingFont(values);
-    heading.textContent = values["Heading text"];
-    const bodyFont = values["Body font"] === "Other installed font"
-      ? values["Installed body font name"].trim() || "Stevie Sans Book"
-      : values["Body font"];
-    paragraphs.forEach((paragraph, index) => {
-      paragraph.textContent = values["Paragraph " + (index + 1)];
-      paragraph.style.fontSize = values["Body size (px)"] + "px";
-      paragraph.style.color = values["Body colour"];
-      paragraph.style.fontFamily = bodyFont === "Use heading font"
-        ? 'var(--heading-font), sans-serif'
-        : CSS.escape(bodyFont) + ", sans-serif";
-    });
+    applyText(heading, values["Heading text"]);
+    heading.style.color = values["Heading colour"] === "#1b1b1b" ? "" : values["Heading colour"];
+    headingFont.apply(values["Heading font"], values["Google font family"]);
+    for (const { name, element, size, colour: defaultColour, font, labels } of groups) {
+      const settings = values[name];
+      for (const [label, target] of labels) applyText(target, settings[label]);
+      element.style.fontSize = settings["Size (px)"] === size ? "" : `${settings["Size (px)"]}px`;
+      element.style.color = settings.Colour === defaultColour ? "" : settings.Colour;
+      font.apply(settings.Font, settings["Google font family"], settings["Installed body font name"]);
+    }
+    email.setAttribute("aria-label", `${values["Contact links"].Email.trim() || "Email"} (copy address)`);
     intro.dataset.position = values["Intro position"].toLowerCase().replace(" ", "-");
     intro.dataset.textAlign = values["Text alignment"].toLowerCase();
     nav.dataset.align = values["Nav alignment"].toLowerCase();
   }
   kit.subscribe(apply);
+  const refresh = () => apply(kit.getValues());
+  headingFont.onChoose(() => {
+    kit.setValue("Heading font", "Desktop font");
+    refresh();
+  });
+  headingFont.restore(refresh);
+  for (const { name, font } of groups) {
+    font.onChoose(() => {
+      if (name !== "Contact links") kit.setValue(`${name}.Installed body font name`, "");
+      kit.setValue(`${name}.Font`, "Desktop font");
+      refresh();
+    });
+    font.restore(refresh);
+  }
   createDialKit("Scroll motion", motionDials, {
     id: "portfolio-scroll-motion",
     persist: { key: "portfolio-scroll-motion" },

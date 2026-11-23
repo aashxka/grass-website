@@ -15,6 +15,15 @@
 
 .homepage {
   --page-edge: 32px;
+  --text-width: 24%;
+  --intro-offset: 24px;
+  --intro-top: 0px;
+  --intro-left: 24px;
+  --intro-right: 160px;
+  --heading-font: "Gaegu";
+  --heading-size: 49px;
+  --section-gap: 24px;
+  --social-gap: 20px;
   --page-top: calc(24px + env(safe-area-inset-top, 0px));
   position: relative;
   z-index: 6;
@@ -64,7 +73,7 @@
 }
 
 .intro {
-  --default-text-width: max(23rem, 38%);
+  --default-text-width: max(23rem, 32%);
   display: grid;
   gap: var(--section-gap, 24px);
   width: clamp(min(100%, 14rem), var(--text-width, var(--default-text-width)), 100%);
@@ -82,19 +91,21 @@
 .intro h1,
 .intro p {
   margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .intro h1 {
-  font-family: var(--heading-font, "Outfit"), "Stevie Sans Book", system-ui, sans-serif;
+  font-family: var(--intro-font, var(--heading-font, "Gaegu"), "Stevie Sans Book", system-ui, sans-serif);
   font-size: var(--heading-size, 2rem);
   font-weight: 400;
   line-height: 1.125;
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
 }
 
 .intro p {
-  color: rgb(27 27 27 / 70%);
+  color: #5f5f5f;
+  font-family: var(--intro-font, inherit);
   font-size: 1rem;
   line-height: 1.5;
 }
@@ -106,6 +117,7 @@
   gap: 4px 12px;
   margin-top: calc(var(--social-gap, 20px) - var(--section-gap, 24px));
   color: rgb(27 27 27 / 70%);
+  font-family: var(--intro-font, inherit);
   font-size: 0.875rem;
   line-height: 1;
 }
@@ -123,6 +135,7 @@
   align-items: center;
   gap: 7px;
   min-height: 28px;
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: none;
@@ -132,6 +145,8 @@
   cursor: pointer;
   transition: color 180ms, opacity 180ms;
 }
+
+.social-label { overflow-wrap: anywhere; }
 
 .social-link:focus-visible {
   color: #1b1b1b;
