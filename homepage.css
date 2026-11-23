@@ -12,18 +12,18 @@
   font-style: normal;
   font-display: swap;
 }
-/* Season Mix Light (Displaay), the TRIAL cut from befonts: personal use only. */
+/* Season Mix Regular (Displaay), the TRIAL cut from befonts: personal use only. */
 @font-face {
   font-family: "Season Mix";
-  src: url("fonts/season-mix-trial-light.woff") format("woff");
-  font-weight: 300;
+  src: url("fonts/season-mix-trial-regular.woff") format("woff");
+  font-weight: 400;
   font-style: normal;
   font-display: block;
 }
 
 /* Home, from her mock: the name top left, 24px from both edges, and one block centred on the sky:
    a Season Mix headline over a list of years, places and roles. Every size and gap is a dial in ?tune.
-   The mock's type sits at name 14 : list 15 : headline 30 (Season Mix Light); her ?tune values, 2026-11-23. */
+   The mock's type sits at name 14 : list 15 : headline 30 (Season Mix Regular); her ?tune values, 2026-11-23. */
 .homepage {
   --ink: #1b1b1b;
   --ink-50: rgb(27 27 27 / 50%);
@@ -120,7 +120,7 @@
   color: var(--ink);
   font-family: var(--intro-font, "Season Mix"), "Stevie Sans Book", system-ui, sans-serif;
   font-size: var(--headline-size);
-  font-weight: 300;
+  font-weight: 400;
   line-height: var(--headline-leading);
   letter-spacing: var(--headline-tracking);
   white-space: pre-line;   /* the copy's own line break, after "simplicity," */
