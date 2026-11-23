@@ -194,7 +194,7 @@ export async function mountHomepageTune() {
     ["Intro offset (px)", "--intro-offset", 24, 0, 140, "px"],
     ["Intro top (px)", "--intro-top", 0, 0, 220, "px"],
     ["Intro left (px)", "--intro-left", 24, 0, 160, "px"],
-    ["Intro right (px)", "--intro-right", 160, 0, 160, "px"],
+    ["Intro right (px)", "--intro-right", 24, 0, 160, "px"],
     ["Heading size (px)", "--heading-size", 49, 16, 96, "px"],
     ["Section spacing (px)", "--section-gap", 24, 0, 100, "px"],
     ["Socials spacing (px)", "--social-gap", 20, 0, 100, "px"],

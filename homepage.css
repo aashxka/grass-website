@@ -14,12 +14,12 @@
 }
 
 .homepage {
-  --page-edge: 32px;
+  --page-edge: 24px;
   --text-width: 24%;
   --intro-offset: 24px;
   --intro-top: 0px;
   --intro-left: 24px;
-  --intro-right: 160px;
+  --intro-right: 24px;
   --heading-font: "Gaegu";
   --heading-size: 49px;
   --section-gap: 24px;
