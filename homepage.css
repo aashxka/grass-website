@@ -5,13 +5,6 @@
   font-style: normal;
   font-display: swap;
 }
-@font-face {
-  font-family: "Bricolage Grotesque";
-  src: url("fonts/bricolage-grotesque-regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
 /* Season Mix Regular (Displaay), the TRIAL cut from befonts: personal use only. */
 @font-face {
   font-family: "Season Mix";
@@ -32,10 +25,10 @@
   --name-size: 14px;
   --name-top: 24px;
   --name-left: 24px;
-  --headline-size: 30px;
+  --headline-size: 32px;
   --headline-leading: 1.44;
   --headline-tracking: 0em;
-  --list-size: 15px;
+  --list-size: 14px;
   --list-leading: 1.5;
   --list-gap: 48px;          /* headline → list */
   --row-gap: 16px;

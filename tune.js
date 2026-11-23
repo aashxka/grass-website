@@ -187,7 +187,7 @@ export async function mountHomepageTune() {
   const css = getComputedStyle(homepage);
   const fontSelect = defaultValue => ({
     type: "select",
-    options: ["Season Mix", "Necto Mono", "Stevie Sans Book", "Outfit", "Bricolage Grotesque", "Google Font", "Desktop font"]
+    options: ["Season Mix", "Necto Mono", "Stevie Sans Book", "Outfit", "Google Font", "Desktop font"]
       .map(value => ({ value, label: value })),
     default: defaultValue,
   });

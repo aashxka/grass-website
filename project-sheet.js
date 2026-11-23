@@ -54,6 +54,8 @@ const finePointer = matchMedia("(hover: hover) and (pointer: fine)");
 let entry = null; // { card, index, url, study, title, scroll, morph }
 let ready = false, closing = false, peeking = false, pressed = false, fullyOpen = false;
 let growAnimation = null; // the open spring, while it runs
+let neighborAnimations = [];
+let openingHero = null;
 let pageAt = 0; // performance.now() when the page may start fading in
 let stopLoading = () => {};
 let stopClosing = () => {};
@@ -171,7 +173,7 @@ function sync() {
   const backActive = finePointer.matches && chipVisible; // the chip is under the pointer
   sheet.toggleAttribute("data-ready", ready);
   sheet.toggleAttribute("data-chip", chipVisible);
-  sheet.toggleAttribute("data-blurred", Boolean(entry) && !closing && !backActive);
+  sheet.toggleAttribute("data-blurred", Boolean(entry) && fullyOpen && !closing && !backActive);
   sheet.toggleAttribute("data-peek", peeking);
   sheet.toggleAttribute("data-pressed", pressed);
   sheet.toggleAttribute("data-closing", closing);
@@ -313,6 +315,12 @@ function reveal() {
   content.getAnimations().forEach(animation => animation.cancel());
   content.style.opacity = "1";
   if (!reduced.matches && typeof content.animate === "function") {
+    if (openingHero) {
+      const hero = openingHero;
+      hero.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: SHEET_MORPH.contentIn, delay: Math.max(0, pageAt - performance.now()), fill: "forwards"
+      }).onfinish = () => hero.remove();
+    }
     content.animate([{ opacity: 0 }, { opacity: 1 }], {
       duration: SHEET_MORPH.contentIn,
       delay: Math.max(0, pageAt - performance.now()),
@@ -399,7 +407,13 @@ function load() {
     decorated.add(doc);
     doc.documentElement.setAttribute("data-case-study-sheet", "");
     const style = doc.createElement("style");
-    style.textContent = FRAME_CSS;
+    style.textContent = FRAME_CSS + `
+      @font-face {font-family:"Season Mix";src:url("/fonts/season-mix-trial-regular.woff")}
+      @font-face {font-family:"Stevie Sans Book";src:url("/fonts/stevie-sans-book.woff")}
+      :is(h1,h2,h3,h4,h5,h6).framer-text,
+      [style*="Bricolage" i] {--framer-font-family:"Season Mix",serif!important;font-family:"Season Mix",serif!important}
+      :is(p,li).framer-text:not([style*="Bricolage" i]) {--framer-font-family:"Stevie Sans Book",sans-serif!important;font-family:"Stevie Sans Book",sans-serif!important}
+    `;
     doc.head.append(style);
     // A page without phone breakpoints asks for a fixed viewport (Framer writes width=1200). Phones honour
     // that by zooming out; an iframe ignores it, so on touch screens the sheet lays it out there and scales.
@@ -520,7 +534,8 @@ function openSheet(card, options = {}) {
 // Card → sheet on the next frame, while the page is still loading.
 function grow() {
   const to = panel.getBoundingClientRect();
-  const fromCard = entry.morph ? visibleBox(entry.card) : null;
+  const cover = entry.card.querySelector(".work-card-cover");
+  const fromCard = entry.morph ? visibleBox(cover) : null;
   const from = fromCard ?? zoomBox(to);
   panel.style.transformOrigin = "0 0";
   panel.style.opacity = "1";
@@ -537,6 +552,33 @@ function grow() {
     animations.push(panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease" }));
     pageAt = 0;
   } else {
+    if (fromCard) {
+      const curve = springCurve(SHEET_MORPH.open);
+      const scale = Math.min(to.width * 0.92 / from.width, to.height * 0.88 / from.height);
+      const width = from.width * scale;
+      const height = from.height * scale;
+      const left = (to.width - width) / 2;
+      const top = (to.height - height) / 2;
+      openingHero = document.createElement("img");
+      openingHero.src = cover.currentSrc || cover.src;
+      openingHero.alt = "";
+      Object.assign(openingHero.style, {
+        position: "absolute", pointerEvents: "none", objectFit: "cover",
+        borderRadius: getComputedStyle(cover).borderRadius, transformOrigin: "0 0",
+        left: left + "px", top: top + "px", width: width + "px", height: height + "px",
+      });
+      box.append(openingHero);
+      openingHero.animate([
+        { transform: `translate(${from.left - to.left - left}px, ${from.top - to.top - top}px) scale(${1 / scale})` },
+        { transform: "none" }
+      ], curve);
+      neighborAnimations = cards.flatMap((card, index) => {
+        if (card === entry.card || !visibleBox(card)) return [];
+        const distance = index < entry.index ? -from.left : innerWidth - from.right;
+        return [card.animate([{ translate: "0px" }, { translate: distance + "px" }],
+          { ...curve, fill: "both" })];
+      });
+    }
     animations.push(
       panel.animate([{ transform: morphTransform(from, to) }, { transform: MORPH_REST }], springCurve(SHEET_MORPH.open)),
       panel.animate([{ opacity: 0 }, { opacity: 1 }], {
@@ -545,7 +587,7 @@ function grow() {
       })
     );
     growAnimation = animations[0];
-    pageAt = performance.now() + springTime(SHEET_MORPH.open, SHEET_MORPH.contentAt);
+    pageAt = performance.now() + springTime(SHEET_MORPH.open, SHEET_MORPH.contentAt) + 90;
   }
   // One start time, so the surface and its fade never drift apart.
   const start = document.timeline.currentTime;
@@ -594,6 +636,8 @@ function closeSheet() {
   if (!entry) return Promise.resolve();
   if (closing) return closed;
   closing = true;
+  openingHero?.remove();
+  neighborAnimations.forEach(animation => animation.reverse());
   let done;
   closed = new Promise(resolve => { done = resolve; });
   sync();
@@ -622,7 +666,7 @@ function closeSheet() {
   panel.style.transformOrigin = "0 0";
   panel.style.transform = "";
   const sheetBox = panel.getBoundingClientRect();
-  const cardBox = visibleBox(entry.card);
+  const cardBox = visibleBox(entry.card.querySelector(".work-card-cover"));
   const target = cardBox ?? zoomBox(sheetBox);
   const current = `translate3d(${shown.m41}px, ${shown.m42}px, 0px) scale(${shown.a}, ${shown.d})`;
 
@@ -681,6 +725,10 @@ function finishClose() {
   stopLoading = () => {};
   const stop = stopClosing;
   stopClosing = () => {};
+  neighborAnimations.forEach(animation => animation.cancel());
+  neighborAnimations = [];
+  openingHero?.remove();
+  openingHero = null;
   entry = null;
   ready = closing = peeking = pressed = fullyOpen = false;
   growAnimation = null;
