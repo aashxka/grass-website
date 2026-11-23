@@ -1,4 +1,3 @@
-import { sheetMotion } from "./sheet-motion.js";
 // Card → sheet, edge peek and back chip: ported value for value from the Framer homepage
 // (PageProjectInteractions.tsx — SHEET, SHEET_MORPH, SHEET_BLUR and BACK on Home), so both sites open
 // a case study the same way.
@@ -55,8 +54,6 @@ const finePointer = matchMedia("(hover: hover) and (pointer: fine)");
 let entry = null; // { card, index, url, study, title, scroll, morph }
 let ready = false, closing = false, peeking = false, pressed = false, fullyOpen = false;
 let growAnimation = null; // the open spring, while it runs
-let neighborAnimations = [];
-let openingHero = null;
 let pageAt = 0; // performance.now() when the page may start fading in
 let stopLoading = () => {};
 let stopClosing = () => {};
@@ -174,7 +171,7 @@ function sync() {
   const backActive = finePointer.matches && chipVisible; // the chip is under the pointer
   sheet.toggleAttribute("data-ready", ready);
   sheet.toggleAttribute("data-chip", chipVisible);
-  sheet.toggleAttribute("data-blurred", Boolean(entry) && fullyOpen && !closing && !backActive);
+  sheet.toggleAttribute("data-blurred", Boolean(entry) && !closing && !backActive);
   sheet.toggleAttribute("data-peek", peeking);
   sheet.toggleAttribute("data-pressed", pressed);
   sheet.toggleAttribute("data-closing", closing);
@@ -304,41 +301,8 @@ function showLoadError() {
   content.append(error);
 }
 
-function heroDestination(frame) {
-  let doc;
-  try { doc = frame?.contentDocument; } catch { return null; }
-  if (!doc || !frame.offsetWidth) return null;
-  const scale = content.clientWidth / frame.offsetWidth;
-  const candidates = [...doc.querySelectorAll("img,[data-image-slot]")]
-    .map(element => ({ element, rect: element.getBoundingClientRect() }))
-    .filter(({ rect }) => rect.width * scale > Math.min(160, content.clientWidth / 2)
-      && rect.height * scale > 60 && rect.top >= -2 && rect.top * scale < content.clientHeight);
-  const asset = openingHero.src.split("?")[0].split("/").pop();
-  const target = candidates.find(({ element }) => element.currentSrc?.includes(asset))
-    ?? candidates.sort((a, b) => a.rect.top - b.rect.top)[0];
-  if (!target) return null;
-  const { left, top, width, height } = target.rect;
-  return { left: left * scale, top: top * scale, width: width * scale, height: height * scale };
-}
-
-let travelEnds = 0;
-const cachedTargets = new Map();
-const targetKey = () => [entry.url, content.clientWidth, content.clientHeight].join("|");
-const travelEase = () => `cubic-bezier(.16,${sheetMotion["Ease out"]},.28,1)`;
-
-function aimHero(hero, target, duration) {
-  const transform = `translate(${target.left - parseFloat(hero.style.left)}px, ${target.top - parseFloat(hero.style.top)}px) scale(${target.width / parseFloat(hero.style.width)}, ${target.height / parseFloat(hero.style.height)})`;
-  if (hero.style.transform === transform || hero.dataset.target === transform) return;
-  const current = getComputedStyle(hero).transform;
-  hero.getAnimations().forEach(animation => animation.cancel());
-  hero.dataset.target = transform;
-  hero.style.transform = transform;
-  hero.animate([{ transform: current }, { transform }], { duration, easing: travelEase() });
-  travelEnds = performance.now() + duration;
-}
-
 function reveal() {
-  if (!entry || closing || ready) return;
+  if (!entry || ready) return;
   ready = true;
   sync();
   const frame = content.querySelector("iframe");
@@ -349,22 +313,8 @@ function reveal() {
   content.getAnimations().forEach(animation => animation.cancel());
   content.style.opacity = "1";
   if (!reduced.matches && typeof content.animate === "function") {
-    if (openingHero) {
-      const hero = openingHero;
-      const target = heroDestination(frame);
-      if (target) {
-        cachedTargets.set(targetKey(), target);
-        aimHero(hero, target, Math.max(60, travelEnds - performance.now()));
-      }
-      pageAt = Math.max(performance.now(), travelEnds) + sheetMotion["Text delay (ms)"];
-      openingHero = null;
-      hero.dataset.transitionHero = "";
-      hero.animate([{ opacity: 1 }, { opacity: 0 }], {
-        duration: sheetMotion["Text fade (ms)"], delay: Math.max(0, pageAt - performance.now()), fill: "forwards"
-      }).onfinish = () => hero.remove();
-    }
     content.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: sheetMotion["Text fade (ms)"],
+      duration: SHEET_MORPH.contentIn,
       delay: Math.max(0, pageAt - performance.now()),
       easing: SHEET_MORPH.ease,
       fill: "backwards",
@@ -509,7 +459,7 @@ function load() {
     try { path = new URL(doc.URL).pathname; } catch {}
     if (doc.URL === "about:blank" || !samePath(path, target.pathname)) return;
     wire(doc);
-    if (waitingForFonts || (doc.readyState === "loading" && !doc.body?.childElementCount)) return;
+    if (doc.readyState === "loading" || waitingForFonts) return;
     decorate(doc);
     const fonts = doc.fonts;
     if (!fonts || fonts.status === "loaded") {
@@ -551,23 +501,7 @@ function fitPage() {
 }
 new ResizeObserver(fitPage).observe(content);
 
-function prepareCard(card) {
-  if (entry || !card.hasAttribute("data-study")) return;
-  const url = studyPath(card);
-  if (content.firstElementChild?.getAttribute("src") === url) return;
-  const frame = document.createElement("iframe");
-  frame.title = cardTitle(card);
-  frame.src = url;
-  content.replaceChildren(frame);
-}
-for (const card of cards) {
-  for (const event of ["pointerenter", "pointerdown", "focus"]) {
-    card.addEventListener(event, () => prepareCard(card));
-  }
-}
-
 function mountContent() {
-  if (entry.study && content.firstElementChild?.getAttribute("src") === entry.url) return;
   content.replaceChildren();
   if (entry.study) {
     const frame = document.createElement("iframe");
@@ -626,8 +560,7 @@ function openSheet(card, options = {}) {
 // Card → sheet on the next frame, while the page is still loading.
 function grow() {
   const to = panel.getBoundingClientRect();
-  const cover = entry.card.querySelector(".work-card-cover");
-  const fromCard = entry.morph ? visibleBox(cover) : null;
+  const fromCard = entry.morph ? visibleBox(entry.card) : null;
   const from = fromCard ?? zoomBox(to);
   panel.style.transformOrigin = "0 0";
   panel.style.opacity = "1";
@@ -644,40 +577,15 @@ function grow() {
     animations.push(panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease" }));
     pageAt = 0;
   } else {
-    if (fromCard) {
-      const curve = { duration: sheetMotion["Card travel (ms)"], easing: travelEase() };
-      openingHero = document.createElement("img");
-      openingHero.src = cover.currentSrc || cover.src;
-      openingHero.alt = "";
-      Object.assign(openingHero.style, {
-        position: "absolute", pointerEvents: "none", objectFit: "cover",
-        borderRadius: getComputedStyle(cover).borderRadius, transformOrigin: "0 0",
-        left: from.left - to.left + "px", top: from.top - to.top + "px",
-        width: from.width + "px", height: from.height + "px",
-      });
-      box.append(openingHero);
-      const measured = heroDestination(content.querySelector("iframe")) ?? cachedTargets.get(targetKey());
-      // A cold click starts moving toward the reading column while the frame lays out.
-      const width = Math.min(to.width, Math.max(from.width, to.width * 0.55));
-      const target = measured ?? { left: (to.width - width) / 2, top: to.height * 0.06,
-        width, height: width * from.height / from.width };
-      aimHero(openingHero, target, sheetMotion["Card travel (ms)"]);
-      neighborAnimations = cards.flatMap((card, index) => {
-        if (card === entry.card || !visibleBox(card)) return [];
-        const distance = index < entry.index ? -from.left : innerWidth - from.right;
-        return [card.animate([{ translate: "0px" }, { translate: distance * sheetMotion["Neighbor travel (%)"] / 100 + "px" }],
-          { ...curve, fill: "both" })];
-      });
-    }
     animations.push(
       panel.animate([{ transform: morphTransform(from, to) }, { transform: MORPH_REST }], springCurve(SHEET_MORPH.open)),
       panel.animate([{ opacity: 0 }, { opacity: 1 }], {
-        duration: fromCard ? sheetMotion["Sheet fade (ms)"] : SHEET_MORPH.zoomIn,
+        duration: fromCard ? SHEET_MORPH.surfaceIn : SHEET_MORPH.zoomIn,
         easing: SHEET_MORPH.ease,
       })
     );
     growAnimation = animations[0];
-    pageAt = performance.now() + springTime(SHEET_MORPH.open, SHEET_MORPH.contentAt) + 90;
+    pageAt = performance.now() + springTime(SHEET_MORPH.open, SHEET_MORPH.contentAt);
   }
   // One start time, so the surface and its fade never drift apart.
   const start = document.timeline.currentTime;
@@ -726,9 +634,6 @@ function closeSheet() {
   if (!entry) return Promise.resolve();
   if (closing) return closed;
   closing = true;
-  box.querySelector("[data-transition-hero]")?.remove();
-  openingHero?.remove();
-  neighborAnimations.forEach(animation => animation.reverse());
   let done;
   closed = new Promise(resolve => { done = resolve; });
   sync();
@@ -757,7 +662,7 @@ function closeSheet() {
   panel.style.transformOrigin = "0 0";
   panel.style.transform = "";
   const sheetBox = panel.getBoundingClientRect();
-  const cardBox = visibleBox(entry.card.querySelector(".work-card-cover"));
+  const cardBox = visibleBox(entry.card);
   const target = cardBox ?? zoomBox(sheetBox);
   const current = `translate3d(${shown.m41}px, ${shown.m42}px, 0px) scale(${shown.a}, ${shown.d})`;
 
@@ -816,11 +721,6 @@ function finishClose() {
   stopLoading = () => {};
   const stop = stopClosing;
   stopClosing = () => {};
-  neighborAnimations.forEach(animation => animation.cancel());
-  neighborAnimations = [];
-  box.querySelector("[data-transition-hero]")?.remove();
-  openingHero?.remove();
-  openingHero = null;
   entry = null;
   ready = closing = peeking = pressed = fullyOpen = false;
   growAnimation = null;
