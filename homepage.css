@@ -176,7 +176,14 @@
 }
 
 .about-view {
-  min-block-size: 100dvh;
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  height: calc(100dvh - 32px);
+  max-width: none; max-height: none;
+  margin: auto; border: 0; border-radius: 14px;
+  color: inherit; font: inherit; overscroll-behavior: contain;
   padding: var(--about-top, calc(96px + env(safe-area-inset-top, 0px)))
     env(safe-area-inset-right, 0px)
     calc(64px + env(safe-area-inset-bottom, 0px))
@@ -194,7 +201,6 @@
   line-height: 1.55;
 }
 
-.about-title,
 .about-lead {
   margin: 0;
   font: 400 clamp(1.5rem, 1.15rem + 1vw, 2rem)/1.25 "Season Mix", "Stevie Sans Book", system-ui, sans-serif;
@@ -210,7 +216,7 @@
   width: 100%;
   height: auto;
   aspect-ratio: 2928 / 1596;
-  border-radius: 1px;
+  border-radius: 10px;
   background: #f5f5f5;
 }
 
@@ -249,7 +255,7 @@
   align-items: baseline;
   gap: 16px;
   padding-block: 12px;
-  border-top: 1px solid #e7e7e7;
+
 }
 
 .about-records p { margin: 0; }
@@ -270,7 +276,8 @@
 
 @media (max-width: 720px) {
   .about-view {
-    --about-top: calc(172px + env(safe-area-inset-top, 0px));
+    width: calc(100% - 16px); height: calc(100dvh - 16px);
+    --about-top: calc(52px + env(safe-area-inset-top, 0px));
     padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
   }
   .about-inner { width: 100%; }
@@ -286,3 +293,13 @@
 .dialkit-panel[data-position="bottom-right"] .dialkit-panel-inner[data-collapsed="false"] {
   max-height: calc(100dvh - 112px) !important;
 }
+html:has(.about-view[open]) { overflow: hidden; }
+.about-view::backdrop { background: rgb(255 255 255 / 45%); backdrop-filter: blur(10px); }
+.about-view { background: white; }
+.about-close { position: absolute; inset: 8px auto auto 8px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: inherit; font: inherit; font-size: 22px; cursor: pointer; }
+.about-close:hover { background: #f4f4f4; }
+.about-film figcaption { color: var(--ink-50); text-transform: uppercase; }
+.about-bio { line-height: var(--list-leading); letter-spacing: var(--headline-tracking); }
+.about-bio p + p { margin-block-start: var(--row-gap); }
+.about-lead { line-height: var(--headline-leading); }
+.about-bio img { height: 1.35em; width: auto; vertical-align: -.26em; }

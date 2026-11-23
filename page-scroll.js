@@ -20,13 +20,13 @@ const landscape = document.querySelector(".landscape");
 const work = document.getElementById("work");
 const workRail = work.querySelector(".work-rail");
 const about = document.getElementById("about");
-const sections = { home, work, about };
+const sections = { home, work };
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const tuneControls = ".dialkit-root, .dialkit-version-overlay, [data-dialkit-ignore]";
 
 let duration = motionDials["Nav duration (ms)"][0];
 let grassSpeed = motionDials["Grass scroll speed (×)"][0];
-let introEnd = 0, workTop = 0, aboutTop = 0;
+let introEnd = 0, workTop = 0;
 let animation = 0, pendingPaint = 0, destination = null;
 let current, openedWork = false;
 
@@ -45,7 +45,7 @@ function placeThumb(animate) {
 function selectLink(animate) {
   const hashLink = links.find(link => link.hash === location.hash);
   const onWork = workTop > 0 && window.scrollY >= workTop - 2;
-  const onAbout = aboutTop > 0 && window.scrollY >= aboutTop - 2;
+  const onAbout = about.open;
   let next = onAbout ? aboutLink : onWork ? workLink : undefined;
   if (hashLink && hashLink !== workLink && hashLink !== aboutLink && !onAbout) next = hashLink;
   if (current === next) return;
@@ -83,18 +83,16 @@ function paint() {
 
 function measure() {
   const y = window.scrollY;
-  const previousTop = aboutTop > 0 && y >= aboutTop - 2 ? aboutTop : workTop;
+  const previousTop = workTop;
   const sectionOffset = y - previousTop;
   const preserveScroll = previousTop > 0 && sectionOffset >= -2 && destination === null;
-  const wasInAbout = previousTop === aboutTop;
   const vh = window.innerHeight;
   const runway = Math.max(100, vh * (reducedMotion.matches ? 0.25 : 0.54) / grassSpeed);
   home.style.setProperty("--landscape-runway", runway + "px");
   introEnd = Math.ceil(intro.offsetTop + intro.offsetHeight);
   workTop = work.offsetTop;
-  aboutTop = about.offsetTop;
   if (preserveScroll) {
-    const top = wasInAbout ? aboutTop : workTop;
+    const top = workTop;
     window.scrollTo({ top: top + Math.max(0, sectionOffset), behavior: "instant" });
   }
   paint();
@@ -146,7 +144,7 @@ function openFromNav(section, focusSection = false) {
   navigate(section, { focusSection });
 }
 
-for (const [link, section] of [[homeLink, home], [workLink, work], [aboutLink, about]]) {
+for (const [link, section] of [[homeLink, home], [workLink, work]]) {
   link.addEventListener("click", event => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
@@ -166,7 +164,7 @@ const hasScrollEnd = "onscrollend" in document;
 
 function settleScroll() {
   clearTimeout(settleTimer);
-  if (!moved || destination !== null) return;
+  if (about.open || !moved || destination !== null) return;
   moved = false;
   if (window.scrollY > 0 && window.scrollY < workTop) openFromNav(towardWork ? work : home);
 }
@@ -193,8 +191,8 @@ function interruptNavigation(event) {
 addEventListener("pointerdown", interruptNavigation, { passive: true });
 addEventListener("wheel", interruptNavigation, { passive: true });
 addEventListener("keydown", event => {
-  if (event.defaultPrevented || event.target.closest?.(".about-film video")) return;
-  if (event.key === "Escape" && window.scrollY < aboutTop - 2 && (location.hash === "#work" || window.scrollY > introEnd)) {
+  if (event.defaultPrevented || about.open) return;
+  if (event.key === "Escape" && (location.hash === "#work" || window.scrollY > introEnd)) {
     openFromNav(home);
   } else if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) {
     stopAnimation();
@@ -203,6 +201,7 @@ addEventListener("keydown", event => {
 addEventListener("hashchange", () => selectLink(true));
 addEventListener("popstate", () => {
   selectLink(true);
+  if (about.open || location.hash === "#about") { syncAbout(); return; }
   const section = Object.hasOwn(sections, location.hash.slice(1)) ? sections[location.hash.slice(1)] : null;
   if (section || !location.hash) navigate(section || home, { animate: false });
 });
@@ -217,10 +216,83 @@ portfolioMotion.addEventListener("change", event => {
   measure();
 });
 
+const film = about.querySelector("video");
+let genie;
+function genieFrames() {
+  const box = about.getBoundingClientRect();
+  const button = aboutLink.getBoundingClientRect();
+  const origin = button.left + button.width / 2 - box.left;
+  return Array.from({ length: 21 }, (_, step) => {
+    const t = step / 20;
+    const sides = [[], []];
+    const y0 = (button.bottom - box.top) * (1 - t);
+    for (let row = 0; row <= 16; row++) {
+      const v = row / 16;
+      const bloom = Math.min(1, t ** (1.7 - v));
+      const y = y0 + v * box.height * t;
+      const left = (origin - button.width / 2) * (1 - bloom);
+      const right = box.width * bloom + (origin + button.width / 2) * (1 - bloom);
+      sides[0].push(left + "px " + y + "px");
+      sides[1].unshift(right + "px " + y + "px");
+    }
+    return { clipPath: "polygon(" + sides.flat().join(",") + ")" };
+  });
+}
+function syncAbout(animate = true) {
+  const show = location.hash === "#about";
+  if (show && !about.open) {
+    stopAnimation();
+    about.showModal();
+    about.scrollTop = 0;
+    film.play().catch(() => {});
+  }
+  if (!about.open) return;
+  const finish = () => {
+    if (location.hash !== "#about") {
+      film.pause();
+      about.close();
+      aboutLink.focus({ preventScroll: true });
+    }
+    genie?.cancel();
+    genie = null;
+    selectLink(true);
+  };
+  if (!animate || reducedMotion.matches) { finish(); return; }
+  if (!genie) {
+    genie = about.animate(genieFrames(), { duration: 460, easing: "ease-in-out", fill: "both" });
+    genie.currentTime = show ? 0 : 460;
+    genie.onfinish = finish;
+  }
+  genie.playbackRate = show ? 1 : -1;
+  genie.play();
+  selectLink(true);
+}
+aboutLink.addEventListener("click", event => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  history.pushState({ aboutSheet: true }, "", "#about");
+  syncAbout(event.detail !== 0);
+});
+function dismissAbout() {
+  if (location.hash !== "#about") return;
+  if (history.state?.aboutSheet) history.back();
+  else {
+    history.replaceState(null, "", location.pathname + location.search);
+    syncAbout();
+  }
+}
+about.querySelector(".about-close").addEventListener("click", dismissAbout);
+about.addEventListener("cancel", event => { event.preventDefault(); dismissAbout(); });
+about.addEventListener("click", event => {
+  if (event.target !== about) return;
+  const r = about.getBoundingClientRect();
+  if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dismissAbout();
+});
+
 selectLink(false);
 measure();
 if (location.hash === "#work") navigate(work, { animate: false });
-if (location.hash === "#about") navigate(about, { animate: false });
+if (location.hash === "#about") syncAbout(false);
 new ResizeObserver(measure).observe(intro);
 new ResizeObserver(measure).observe(home);
 new ResizeObserver(measure).observe(work);
