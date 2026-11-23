@@ -399,17 +399,40 @@ function load() {
     decorated.add(doc);
     doc.documentElement.setAttribute("data-case-study-sheet", "");
     const style = doc.createElement("style");
-    // Use the Framer page's own styles, including its responsive typography.
-    // Alias each Bricolage face so spans and Framer's subset families resolve too.
-    const families = new Set(["Bricolage Grotesque"]);
-    for (const face of doc.fonts) {
-      const family = face.family.replace(/^["']|["']$/g, "");
-      if (/bricolage[\\s_-]*grotesque/i.test(family)) families.add(family);
-    }
-    style.textContent = FRAME_CSS + Array.from(families, family =>
-      `@font-face { font-family: ${JSON.stringify(family)}; src: url("${location.origin}/fonts/season-mix-trial-regular.woff") format("woff"); font-weight: 1 1000; font-display: swap; }`
-    ).join("\n");
+    style.textContent = FRAME_CSS + `
+      @font-face {
+        font-family: "Season Mix";
+        src: url("${location.origin}/fonts/season-mix-trial-regular.woff") format("woff");
+        font-weight: 400;
+        font-display: swap;
+      }
+      html[data-case-study-sheet] [data-season-mix] {
+        font-family: "Season Mix", serif !important;
+        font-weight: 400 !important;
+      }
+    `;
     doc.head.append(style);
+    const applyFont = root => {
+      const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const matches = new Set();
+      while (walker.nextNode()) {
+        const el = walker.currentNode.parentElement;
+        if (!el || !walker.currentNode.textContent.trim() || el.matches("script, style")) continue;
+        const family = doc.defaultView.getComputedStyle(el).fontFamily.split(",")[0];
+        if (/bricolage/i.test(family)) matches.add(el);
+      }
+      for (const el of matches) el.setAttribute("data-season-mix", "");
+    };
+    applyFont(doc.body);
+    doc.defaultView.addEventListener("load", () => applyFont(doc.body), { once: true });
+    new MutationObserver(records => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.nodeType === 1) applyFont(node);
+          else if (node.nodeType === 3 && node.parentElement) applyFont(node.parentElement);
+        }
+      }
+    }).observe(doc.body, { childList: true, subtree: true });
     // A page without phone breakpoints asks for a fixed viewport (Framer writes width=1200). Phones honour
     // that by zooming out; an iframe ignores it, so on touch screens the sheet lays it out there and scales.
     const viewport = /(?:^|[,;\s])width\s*=\s*(\d+)/i.exec(doc.querySelector('meta[name="viewport"]')?.getAttribute("content") || "");
