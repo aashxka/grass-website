@@ -439,11 +439,45 @@ function load() {
     doc.documentElement.setAttribute("data-case-study-sheet", "");
     const style = doc.createElement("style");
     style.textContent = FRAME_CSS + `
-      @font-face {font-family:"Season Mix";src:url("/fonts/season-mix-trial-regular.woff")}
-      @font-face {font-family:"Stevie Sans Book";src:url("/fonts/stevie-sans-book.woff")}
-      :is(h1,h2,h3,h4,h5,h6).framer-text,
-      [style*="Bricolage" i] {--framer-font-family:"Season Mix",serif!important;font-family:"Season Mix",serif!important}
-      :is(p,li).framer-text:not([style*="Bricolage" i]) {--framer-font-family:"Stevie Sans Book",sans-serif!important;font-family:"Stevie Sans Book",sans-serif!important}
+      @font-face {
+        font-family: "Season Mix";
+        src: url("${location.origin}/fonts/season-mix-trial-regular.woff") format("woff");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Stevie Sans Book";
+        src: url("${location.origin}/fonts/stevie-sans-book.woff") format("woff");
+        font-display: swap;
+      }
+
+      /* Framer's shared case-study title preset is rendered as a paragraph. */
+      html[data-case-study-sheet] :is(h1,h2,h3,h4,h5,h6,[role="heading"],.framer-styles-preset-tjvczo).framer-text {
+        font-family: "Season Mix", Georgia, serif !important;
+        font-weight: 400 !important;
+        letter-spacing: -0.02em !important;
+        line-height: 1.15 !important;
+        text-wrap: balance;
+      }
+      html[data-case-study-sheet] :is(h1,.framer-styles-preset-tjvczo).framer-text {
+        letter-spacing: -0.03em !important;
+        line-height: 1.08 !important;
+      }
+      html[data-case-study-sheet] h6.framer-text {
+        letter-spacing: 0.04em !important;
+        line-height: 1.3 !important;
+      }
+      html[data-case-study-sheet] :is(p,li,blockquote,figcaption).framer-text:not(.framer-styles-preset-tjvczo,[role="heading"]) {
+        font-family: "Stevie Sans Book", system-ui, sans-serif !important;
+        letter-spacing: normal !important;
+        line-height: 1.55 !important;
+        text-wrap: pretty;
+      }
+      html[data-case-study-sheet] :is(h1,h2,h3,h4,h5,h6,[role="heading"],p,li,blockquote,figcaption).framer-text
+        :where(a,span,strong,b,em,i,mark).framer-text {
+        font-family: inherit !important;
+        letter-spacing: inherit !important;
+        line-height: inherit !important;
+      }
     `;
     doc.head.append(style);
     // A page without phone breakpoints asks for a fixed viewport (Framer writes width=1200). Phones honour
