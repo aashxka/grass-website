@@ -11,7 +11,7 @@
 //   Colours     all 14 pickers, reset colours
 //   Reset       back to the tuned defaults (colours stay, as in grass-hills)
 import { createDialKit, createDialRoot } from "./vendor/dialkit/index.js";
-import { motionDials, portfolioMotion } from "./page-scroll.js?v=feedback";
+import { motionDials, portfolioMotion } from "./page-scroll.js?v=name-pill";
 
 const VIEW = [{ value: "0", label: "Scene" }, { value: "1", label: "Terrain" }];
 const FRAME = [{ value: "0", label: "Banner" }, { value: "1", label: "Hero 16:9" }];
@@ -225,9 +225,22 @@ export async function mountHomepageTune() {
 
   // Each part's font goes in its own custom property, so the list's two columns can differ.
   const list = homepage.querySelector(".intro-list");
+  // The name is a one-item nav: its copy lives in the link's label (and the bold hover copy in
+  // data-label), and its colour dial sets the selected ink; unselected it greys like the nav.
+  const nameLink = homepage.querySelector("#home-link");
+  const nameCopy = {
+    get: () => nameLink.dataset.label,
+    set: value => {
+      nameLink.dataset.label = value;
+      nameLink.setAttribute("aria-label", value);
+      nameLink.querySelector(".nav-label").textContent = value;
+    },
+  };
+  const headline = homepage.querySelector(".intro-headline");
   const parts = [
-    { name: "Name", element: homepage.querySelector(".intro-name"), font: "Necto Mono", colour: "#1b1b1b", copy: true },
-    { name: "Headline", element: homepage.querySelector(".intro-headline"), font: "Season Mix", colour: "#1b1b1b", copy: true },
+    { name: "Name", element: homepage.querySelector(".intro-name"), colourProperty: "--name-ink", font: "Necto Mono", colour: "#1b1b1b", copy: nameCopy },
+    { name: "Headline", element: headline, font: "Season Mix", colour: "#1b1b1b",
+      copy: { get: () => headline.textContent, set: value => { headline.textContent = value; } } },
     { name: "Years & places", element: list, property: "--label-font", colourProperty: "--ink-50", font: "Stevie Sans Book", colour: "#1b1b1b80" },
     { name: "Roles", element: list, property: "--role-font", colourProperty: "--ink", font: "Stevie Sans Book", colour: "#1b1b1b" },
   ];
@@ -236,7 +249,7 @@ export async function mountHomepageTune() {
     part.control = createIntroFontControl(part.element, part.font, part.property, part.name);
     config[part.name] = {
       _collapsed: true,
-      ...(part.copy ? { Text: text(part.element.textContent) } : {}),
+      ...(part.copy ? { Text: text(part.copy.get()) } : {}),
       Colour: colour(part.colour),
       Font: fontSelect(part.font),
       "Google font family": text("", "Exact family name, e.g. Inter"),
@@ -260,7 +273,7 @@ export async function mountHomepageTune() {
     }
     for (const { name, element, colour: defaultColour, colourProperty, control, copy } of parts) {
       const settings = values[name];
-      if (copy && settings.Text !== element.textContent) element.textContent = settings.Text;
+      if (copy && settings.Text !== copy.get()) copy.set(settings.Text);
       const value = settings.Colour === defaultColour ? "" : settings.Colour;
       if (colourProperty) element.style.setProperty(colourProperty, value);
       else element.style.color = value;

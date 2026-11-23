@@ -80,20 +80,32 @@
   right: calc(var(--page-edge) + env(safe-area-inset-right, 0px));
 }
 
-.intro-name {
-  position: absolute;
+/* The name is a one-item nav: the nav's track, thumb, colours, hover, press and focus (it carries the
+   .nav class), in its own type. Its white thumb is on while you're on the landing page and fades off
+   when Work (or any nav item) is selected; then it reads and hovers like an unselected nav item, and a
+   click brings you home. It stays put while the page scrolls, like the nav. */
+.homepage .intro-name {
+  position: fixed;
+  z-index: 2;
   top: calc(var(--name-top) + env(safe-area-inset-top, 0px));
+  right: auto;
   left: calc(var(--name-left) + env(safe-area-inset-left, 0px));
   margin: 0;
-  color: var(--ink);
   font-family: var(--intro-font, "Necto Mono"), ui-monospace, monospace;
   font-size: var(--name-size);
   font-weight: 400;
-  line-height: 1.2;
   letter-spacing: 0;
   text-transform: uppercase;
-  white-space: nowrap;
 }
+
+.homepage .intro-name .nav-thumb {
+  left: 5px;
+  width: calc(100% - 10px);
+  opacity: 0;
+}
+
+.homepage .intro-name:has(a[aria-current]) .nav-thumb { opacity: 1; }
+.homepage .intro-name a[aria-current="page"] { color: var(--name-ink, #1b1b1b); }
 
 /* The block is as wide as its longest line and centred; its middle sits at --block-centre of the
    window (index.html measures its height into --block-h), never closer than --block-min-top. */
@@ -114,11 +126,14 @@
   letter-spacing: var(--headline-tracking);
   white-space: pre-line;   /* the copy's own line break, after "simplicity," */
   text-wrap: balance;
+  text-align: center;
 }
 
+/* The list's two columns stay aligned and sit centred under the headline, on the same middle line. */
 .intro-list {
   display: grid;
   grid-template-columns: max-content max-content;
+  justify-content: center;
   gap: var(--row-gap) var(--column-gap);
   margin: var(--list-gap) 0 0;
   padding: 0;
@@ -150,7 +165,7 @@
 @media (max-width: 720px) {
   .homepage {
     --name-top: 98px;        /* 20px under the 54px phone nav */
-    --block-min-top: 164px;  /* 48px under the name */
+    --block-min-top: 192px;  /* 40px under the 54px name pill */
     --headline-size: 26px;
   }
 
@@ -159,9 +174,13 @@
   .intro-list {
     grid-template-columns: 1fr;
     row-gap: calc(var(--row-gap) + 6px);
+    text-align: center;
   }
 
-  .intro-label { gap: calc(var(--label-gap) * .75); }
+  .intro-label {
+    justify-content: center;
+    gap: calc(var(--label-gap) * .75);
+  }
 }
 
 /* Keep the tuning panel below the navigation, including when every group is expanded. */

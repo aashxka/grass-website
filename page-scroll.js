@@ -10,6 +10,9 @@ const nav = document.getElementById("nav");
 const links = [...nav.querySelectorAll("a")];
 const thumb = nav.querySelector(".nav-thumb");
 const workLink = links[0];
+// The name, top left: a one-item nav that is selected on the landing page (whenever no nav item is).
+const homeLink = document.getElementById("home-link");
+const nameNav = homeLink.parentElement;
 const home = document.getElementById("home");
 const intro = home.querySelector(".intro");
 const landscape = document.querySelector(".landscape");
@@ -45,6 +48,8 @@ function selectLink(animate) {
   current?.removeAttribute("aria-current");
   current = next;
   current?.setAttribute("aria-current", "page");
+  if (current) homeLink.removeAttribute("aria-current");
+  else homeLink.setAttribute("aria-current", "page");
   placeThumb(animate && hasPrevious);
 }
 
@@ -138,6 +143,12 @@ workLink.addEventListener("click", event => {
   openFromNav(!goingToWork, event.detail === 0);
 });
 
+homeLink.addEventListener("click", event => {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  openFromNav(false);
+});
+
 // Let the browser handle wheel momentum, touch panning and scrollbar dragging.
 // Complete a partial section transition when the native gesture ends.
 let previousY = window.scrollY;
@@ -169,7 +180,7 @@ addEventListener("scroll", () => {
 document.addEventListener("scrollend", settleScroll);
 
 function interruptNavigation(event) {
-  if (!workLink.contains(event.target) && !event.target.closest?.(tuneControls)) stopAnimation();
+  if (!workLink.contains(event.target) && !homeLink.contains(event.target) && !event.target.closest?.(tuneControls)) stopAnimation();
 }
 addEventListener("pointerdown", interruptNavigation, { passive: true });
 addEventListener("wheel", interruptNavigation, { passive: true });
@@ -204,8 +215,11 @@ if (startInWork) navigate(true, { animate: false });
 new ResizeObserver(measure).observe(intro);
 new ResizeObserver(measure).observe(home);
 new ResizeObserver(() => placeThumb(false)).observe(nav);
-const font = document.fonts ? document.fonts.load('14px "Stevie Sans Book"') : Promise.resolve();
+const font = document.fonts
+  ? Promise.all([document.fonts.load('14px "Stevie Sans Book"'), document.fonts.load('15px "Necto Mono"')])
+  : Promise.resolve();
 Promise.race([font, new Promise(resolve => setTimeout(resolve, 1500))]).catch(() => {}).then(() => {
   placeThumb(false);
   nav.classList.add("ready");
+  nameNav.classList.add("ready");
 });

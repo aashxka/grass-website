@@ -10,7 +10,7 @@
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/season-mix-trial-light.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/NectoMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="homepage.css?v=intro-mock">
+<link rel="stylesheet" href="homepage.css?v=name-pill">
 <script type="importmap">
 {
   "imports": {
@@ -290,7 +290,10 @@
 </nav>
 <main>
 <div class="home-scroll" id="home">
-<h1 class="intro-name" id="intro-title">Aashika Ashok</h1>
+<h1 class="nav intro-name" id="intro-title">
+  <span class="nav-thumb" aria-hidden="true"></span>
+  <a href="/" id="home-link" data-label="Aashika Ashok" aria-label="Aashika Ashok" aria-current="page"><span class="nav-label">Aashika Ashok</span></a>
+</h1>
 <section class="intro" aria-labelledby="intro-title">
   <p class="intro-headline" id="intro-headline">Product designer obsessed with simplicity,
 human behavior and aesthetics.</p>
@@ -335,7 +338,7 @@ human behavior and aesthetics.</p>
 </dialog>
 <script type="module" src="project-sheet.js?v=card-morph"></script>
 </div>
-<script type="module" src="page-scroll.js?v=feedback"></script>
+<script type="module" src="page-scroll.js?v=name-pill"></script>
 <script type="module">
 if (new URLSearchParams(location.search).has("annotate")) {
   try {
@@ -371,7 +374,7 @@ if (new URLSearchParams(location.search).has("annotate")) {
 <script type="module">
 const tune = new URLSearchParams(location.search).get("tune");
 if (tune !== null && tune !== "0") {
-  import("./tune.js?v=intro-mock").then(({ mountHomepageTune }) => mountHomepageTune())
+  import("./tune.js?v=name-pill").then(({ mountHomepageTune }) => mountHomepageTune())
     .catch(error => console.warn("Homepage controls could not load", error));
 }
 </script>
@@ -1648,7 +1651,7 @@ requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=intro-mock").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=name-pill").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {
