@@ -5,7 +5,6 @@ export const motionDials = {
 
 export const portfolioMotion = new EventTarget();
 const clampProgress = value => Math.min(1, Math.max(0, value));
-const smooth = progress => progress * progress * (3 - 2 * progress);
 
 const nav = document.getElementById("nav");
 const links = [...nav.querySelectorAll("a")];
@@ -21,7 +20,7 @@ const tuneControls = ".dialkit-root, .dialkit-version-overlay, [data-dialkit-ign
 
 let duration = motionDials["Nav duration (ms)"][0];
 let grassSpeed = motionDials["Grass scroll speed (×)"][0];
-let introEnd = 0, workTop = 0, grassDrop = 0;
+let introEnd = 0, workTop = 0;
 let animation = 0, pendingPaint = 0, destination = null;
 let current, openedWork = false;
 
@@ -52,17 +51,15 @@ function selectLink(animate) {
 function paint() {
   pendingPaint = 0;
   const y = window.scrollY;
-  const progress = clampProgress(y / Math.max(1, workTop));
-  const drop = smooth(clampProgress((progress - 0.06) / 0.94));
-  const workReveal = smooth(clampProgress((progress - 0.10) / 0.90));
+  // Let the intro lead by a few scroll pixels, then move the hill directly with the gesture.
+  const drop = Math.max(0, y - 4) * grassSpeed;
   const reduced = reducedMotion.matches;
-  landscape.style.setProperty("--landscape-drop", (reduced ? 0 : drop * grassDrop) + "px");
-  landscape.style.setProperty("--landscape-opacity", 1 - smooth(clampProgress((progress - 0.3) / 0.7)));
-  workRail.style.setProperty("--work-reveal", workReveal);
-  workRail.style.setProperty("--work-rise", (reduced ? 0 : (1 - workReveal) * 14) + "px");
-  landscape.inert = progress >= 1;
+  const cleared = y >= workTop || (reduced ? y > 4 : drop >= window.innerHeight * 0.4);
+  landscape.style.setProperty("--landscape-drop", (reduced ? 0 : drop) + "px");
+  landscape.inert = cleared;
+  workRail.style.setProperty("--work-visibility", cleared ? "visible" : "hidden");
   intro.inert = y >= introEnd && !intro.contains(document.activeElement);
-  const hideWork = workReveal < 0.04;
+  const hideWork = !cleared;
   if (hideWork && work.contains(document.activeElement)) workLink.focus({ preventScroll: true });
   work.inert = hideWork;
   if (location.hash !== "#work") openedWork = false;
@@ -82,7 +79,6 @@ function measure() {
   home.style.setProperty("--landscape-runway", runway + "px");
   introEnd = Math.ceil(intro.offsetTop + intro.offsetHeight);
   workTop = work.offsetTop;
-  grassDrop = vh * 0.4;
   if (wasInWork) {
     window.scrollTo({ top: workTop + Math.max(0, workOffset), behavior: "instant" });
   }
