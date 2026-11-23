@@ -541,6 +541,7 @@ function openSheet(card, options = {}) {
   if (entry && entry.card === card && !closing) return;
   if (entry) finishClose(); // a running close gives way at once
   entry = entryFor(card, options);
+  if (entry.about) aboutLink.dispatchEvent(new CustomEvent("about-sheet-state", { detail: { open: true } }));
   ready = false;
   closing = false;
   peeking = false;
@@ -671,11 +672,7 @@ function closeSheet() {
   panel.style.transform = "";
   const sheetBox = panel.getBoundingClientRect();
   const cardBox = visibleBox(entry.card);
-  let target = cardBox ?? zoomBox(sheetBox);
-  if (entry.about && cardBox) {
-    const navBottom = aboutLink.closest("#nav").getBoundingClientRect().bottom;
-    target = { left: cardBox.left + cardBox.width / 2, top: navBottom, width: 0, height: 0 };
-  }
+  const target = cardBox ?? zoomBox(sheetBox);
   const current = `translate3d(${shown.m41}px, ${shown.m42}px, 0px) scale(${shown.a}, ${shown.d})`;
 
   const animations = [];
@@ -729,6 +726,7 @@ function closeSheet() {
 function finishClose() {
   if (!entry) return;
   const card = entry.card;
+  if (entry.about) aboutLink.dispatchEvent(new CustomEvent("about-sheet-state", { detail: { open: false } }));
   stopLoading();
   stopLoading = () => {};
   const stop = stopClosing;
