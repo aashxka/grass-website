@@ -452,6 +452,7 @@ const PAL_INFO = [
 const PAL = { ...PAL_DEFAULT };
 
 const hiddenLayers = new Set();
+const LEFT_CREST_ROUTE_X = -105;
 const DEFAULTS = {
   view: 0, frame: 1,
   deskX: 2.85, deskDepth: -1.1, lift: 0.02, gsize: 1.38, angle: -31, monitor: 1.4,
@@ -460,8 +461,8 @@ const DEFAULTS = {
   haze: 0.89, overall: 1.11, dof: 0, glow: 0,
   radius: 28, len: 0.54, density: 1.69, base: 0.5, lav: 0.5,
   wind: 1, gust: 1,
-  subject: 1.65, routeX: -105, routeDepth: -0.45, footHeight: 0,
-  walkSpeed: 1.35, walkDistance: 39, photoPause: 1.2,
+  subject: 1.65, routeX: -150, routeDepth: 0.8, footHeight: 0.11,
+  walkSpeed: 1.35, walkDistance: 12, photoPause: 1.2,
 };
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const WIND_MOTION_SCALE = REDUCED ? 0.35 : 1;
@@ -1409,7 +1410,7 @@ function figureColumn() {
   const span=W/VIEWPORT.s;
   // Anchor to the left crest and keep her in view when the banner crops it out.
   const leftCrest = Math.max(400, VIEWPORT.xL + span * .18);
-  return leftCrest + (P.routeX - DEFAULTS.routeX);
+  return leftCrest + (P.routeX - LEFT_CREST_ROUTE_X);
 }
 function updateFigure(dt) {
   photographer.tick(dt, P.photoPause);
