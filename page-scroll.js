@@ -42,10 +42,25 @@ function placeThumb(animate) {
   }
 }
 
+let holdAboutPill = false;
+let pillReleaseTimer;
+aboutLink.addEventListener("about-sheet-state", event => {
+  clearTimeout(pillReleaseTimer);
+  if (event.detail.open) {
+    holdAboutPill = true;
+    selectLink(true);
+  } else {
+    pillReleaseTimer = setTimeout(() => {
+      holdAboutPill = false;
+      selectLink(true);
+    }, 1000);
+  }
+});
+
 function selectLink(animate) {
   const hashLink = links.find(link => link.hash === location.hash);
   const onWork = workTop > 0 && window.scrollY >= workTop - 2;
-  const onAbout = aboutActive();
+  const onAbout = aboutActive() || holdAboutPill;
   let next = onAbout ? aboutLink : onWork ? workLink : undefined;
   if (hashLink && hashLink !== workLink && hashLink !== aboutLink && !onAbout) next = hashLink;
   if (current === next) return;
