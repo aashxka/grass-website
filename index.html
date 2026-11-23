@@ -138,7 +138,10 @@
     visibility: var(--work-visibility, hidden);
     grid-auto-flow: column;
     grid-auto-columns: clamp(270px, 35.25vw, 780px);
-    gap: 8px;
+    gap: 24px;
+    /* room above the covers for the hover lift, which the sideways scroller would otherwise clip */
+    padding-top: 24px;
+    margin-top: -24px;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scrollbar-width: none;
@@ -150,6 +153,22 @@
   .work-rail:focus-visible { outline: 2px solid #1b1b1b; outline-offset: -2px; }
   .work-card { min-width: 0; scroll-snap-align: start; color: inherit; text-decoration: none; }
   .work-card-cover { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; }
+  /* Hover, as on molly.studio's project cards: the cover alone (not the caption) springs up 2.5% and casts a
+     soft shadow, overshooting a touch and settling, and springs back the same way. The curve is a damped
+     spring (stiffness 219, damping 12.5, ζ ≈ 0.42) sampled over 0.65s. */
+  .work-card-cover {
+    --cover-spring: linear(0, 0.0175, 0.0659, 0.1389, 0.2303, 0.3342, 0.4453, 0.5586, 0.67, 0.7759, 0.8736, 0.9609, 1.0365, 1.0995, 1.1496, 1.1872, 1.2127, 1.2271, 1.2316, 1.2276, 1.2164, 1.1995, 1.1783, 1.1542, 1.1285, 1.1023, 1.0765, 1.0519, 1.0293, 1.0091, 0.9916, 0.977, 0.9653, 0.9566, 0.9507, 0.9474, 0.9463, 0.9473, 0.9499, 0.9538, 0.9587, 0.9643, 0.9702, 0.9763, 0.9823, 0.988, 0.9932, 0.9979, 1.002, 1.0053, 1.008);
+    filter: drop-shadow(rgba(0, 0, 0, 0) 0px 0px 0px);
+    transition: transform 0.65s var(--cover-spring), filter 0.65s var(--cover-spring);
+    will-change: transform, filter;
+  }
+  @media (hover: hover) {
+    .work-card-cover:hover { transform: scale(1.025); filter: drop-shadow(rgba(0, 0, 0, 0.2) 0px 15px 17px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .work-card-cover { transition: filter 0.2s ease; }
+    .work-card-cover:hover { transform: none; }
+  }
   @font-face { font-family: "Necto Mono"; src: url("fonts/NectoMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
   .work-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 16px; }
   .work-caption p { margin: 0; font-size: 15px; color: #1b1b1b; }
