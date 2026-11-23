@@ -295,6 +295,95 @@ export async function mountHomepageTune() {
     id: "portfolio-scroll-motion",
     persist: { key: "portfolio-scroll-motion" },
   }).subscribe(values => portfolioMotion.dispatchEvent(new CustomEvent("change", { detail: values })));
+  mountCardHoverTune();
+}
+
+/* Card hover panel (?tune): the Work covers' hover spring, lift and shadow.
+ *   Spring        physics (stiffness / damping / mass) or time (duration / bounce), as DialKit offers
+ *   Lift          how far the cover scales up
+ *   Shadow        y, x, blur, opacity, colour of the drop shadow it casts
+ *   Hold hover    pins every cover in its hovered state, to judge the shadow
+ *   Replay        bounces the first cover in and back out
+ * The spring is sampled into a CSS linear() curve with the same maths as the shipped default, and every
+ * value lands as a custom property on .work-rail (index.html keeps the defaults). */
+const CARD_HOVER = { stiffness: 219.3, damping: 12.5, mass: 1, lift: 1.025, y: 15, x: 0, blur: 17, opacity: 0.2, colour: "#000000" };
+
+function springEasing(spring) {
+  let { stiffness, damping, mass = 1 } = spring;
+  if (spring.visualDuration !== undefined) {   // time mode → physics, the way Motion converts it
+    const root = (2 * Math.PI) / (Math.max(0.05, spring.visualDuration) * 1.2);
+    stiffness = root * root;
+    damping = 2 * Math.min(1, Math.max(0.05, 1 - (spring.bounce ?? 0))) * root;
+    mass = 1;
+  }
+  const w0 = Math.sqrt(stiffness / Math.max(0.01, mass));
+  const zeta = damping / (2 * Math.sqrt(stiffness * Math.max(0.01, mass)));
+  const offset = t => {
+    if (zeta < 1) {
+      const wd = w0 * Math.sqrt(1 - zeta * zeta);
+      return Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t));
+    }
+    if (zeta === 1) return Math.exp(-w0 * t) * (1 + w0 * t);
+    const root = Math.sqrt(zeta * zeta - 1), r1 = -w0 * (zeta - root), r2 = -w0 * (zeta + root);
+    const c2 = -r1 / (r2 - r1);
+    return (1 - c2) * Math.exp(r1 * t) + c2 * Math.exp(r2 * t);
+  };
+  let end = 0;
+  for (let t = 0; t <= 3; t += 0.004) if (Math.abs(offset(t)) > 0.005) end = t;   // settled within 0.5%
+  const duration = Math.max(0.08, end + 0.004);
+  const points = [];
+  for (let i = 0; i <= 60; i++) points.push(+(1 - offset((duration * i) / 60)).toFixed(4));
+  points[60] = 1;
+  return { time: Math.round(duration * 1000) + "ms", easing: `linear(${points.join(", ")})` };
+}
+
+export async function mountCardHoverTune() {
+  await getDialRoot();
+  const rail = document.querySelector(".work-rail");
+  if (!rail) return;
+  const d = CARD_HOVER;
+  let replayTimer = 0;
+  const kit = createDialKit("Card hover", {
+    Spring: { type: "spring", stiffness: d.stiffness, damping: d.damping, mass: d.mass },
+    "Lift (scale)": [d.lift, 1, 1.1, 0.005],
+    Shadow: {
+      "Y offset (px)": [d.y, -20, 60, 1],
+      "X offset (px)": [d.x, -40, 40, 1],
+      "Blur (px)": [d.blur, 0, 80, 1],
+      Opacity: [d.opacity, 0, 1, 0.01],
+      Colour: { type: "color", default: d.colour },
+    },
+    "Hold hover": false,
+    Replay: { type: "action", label: "Replay on first card" },
+  }, {
+    id: "card-hover",
+    persist: { key: "grass-website-card-hover" },
+    onAction: path => {
+      if (path !== "Replay") return;
+      const cover = rail.querySelector(".work-card-cover");
+      if (!cover) return;
+      const { time } = springEasing(kit.getValues().Spring);
+      cover.removeAttribute("data-hover-replay");
+      void cover.offsetWidth;   // restart even mid-replay
+      cover.setAttribute("data-hover-replay", "");
+      clearTimeout(replayTimer);
+      replayTimer = setTimeout(() => cover.removeAttribute("data-hover-replay"), parseFloat(time) + 300);
+    },
+  });
+
+  function apply(values) {
+    const { time, easing } = springEasing(values.Spring);
+    const shadow = values.Shadow;
+    const hex = toHex(shadow.Colour);
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    rail.style.setProperty("--cover-time", time);
+    rail.style.setProperty("--cover-spring", easing);
+    rail.style.setProperty("--cover-lift", String(values["Lift (scale)"]));
+    rail.style.setProperty("--cover-shadow", `rgba(${r}, ${g}, ${b}, ${shadow.Opacity}) ${shadow["X offset (px)"]}px ${shadow["Y offset (px)"]}px ${shadow["Blur (px)"]}px`);
+    rail.toggleAttribute("data-hover-held", Boolean(values["Hold hover"]));
+  }
+  kit.subscribe(apply);
+  apply(kit.getValues());
 }
 
 export async function mountTune(h,game) {

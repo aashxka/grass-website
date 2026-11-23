@@ -155,19 +155,29 @@
   .work-card-cover { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; }
   /* Hover, as on molly.studio's project cards: the cover alone (not the caption) springs up 2.5% and casts a
      soft shadow, overshooting a touch and settling, and springs back the same way. The curve is a damped
-     spring (stiffness 219, damping 12.5, ζ ≈ 0.42) sampled over 0.65s. */
+     spring (stiffness 219.3, damping 12.5, mass 1; ζ ≈ 0.42) sampled into linear() until it settles. The
+     ?tune "Card hover" panel retunes all of these live by overriding them on the rail. */
+  .work-rail {
+    --cover-spring: linear(0, 0.0184, 0.0691, 0.1453, 0.2405, 0.3482, 0.4627, 0.5789, 0.6923, 0.7993, 0.897, 0.9835, 1.0572, 1.1176, 1.1645, 1.1984, 1.2199, 1.2302, 1.2308, 1.2229, 1.2083, 1.1885, 1.165, 1.1392, 1.1124, 1.0856, 1.0599, 1.036, 1.0145, 0.9958, 0.9801, 0.9675, 0.958, 0.9515, 0.9477, 0.9464, 0.9471, 0.9497, 0.9537, 0.9587, 0.9644, 0.9705, 0.9768, 0.9829, 0.9887, 0.994, 0.9987, 1.0027, 1.006, 1.0086, 1.0105, 1.0117, 1.0123, 1.0124, 1.012, 1.0113, 1.0102, 1.009, 1.0076, 1.0062, 1);
+    --cover-time: 800ms;
+    --cover-lift: 1.025;
+    --cover-shadow: rgba(0, 0, 0, 0.2) 0px 15px 17px;
+  }
   .work-card-cover {
-    --cover-spring: linear(0, 0.0175, 0.0659, 0.1389, 0.2303, 0.3342, 0.4453, 0.5586, 0.67, 0.7759, 0.8736, 0.9609, 1.0365, 1.0995, 1.1496, 1.1872, 1.2127, 1.2271, 1.2316, 1.2276, 1.2164, 1.1995, 1.1783, 1.1542, 1.1285, 1.1023, 1.0765, 1.0519, 1.0293, 1.0091, 0.9916, 0.977, 0.9653, 0.9566, 0.9507, 0.9474, 0.9463, 0.9473, 0.9499, 0.9538, 0.9587, 0.9643, 0.9702, 0.9763, 0.9823, 0.988, 0.9932, 0.9979, 1.002, 1.0053, 1.008);
     filter: drop-shadow(rgba(0, 0, 0, 0) 0px 0px 0px);
-    transition: transform 0.65s var(--cover-spring), filter 0.65s var(--cover-spring);
+    transition: transform var(--cover-time) var(--cover-spring), filter var(--cover-time) var(--cover-spring);
     will-change: transform, filter;
   }
+  /* the panel's "Hold hover" and "Replay" show the same state without a pointer */
   @media (hover: hover) {
-    .work-card-cover:hover { transform: scale(1.025); filter: drop-shadow(rgba(0, 0, 0, 0.2) 0px 15px 17px); }
+    .work-card-cover:hover, .work-rail[data-hover-held] .work-card-cover, .work-card-cover[data-hover-replay] {
+      transform: scale(var(--cover-lift));
+      filter: drop-shadow(var(--cover-shadow));
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .work-card-cover { transition: filter 0.2s ease; }
-    .work-card-cover:hover { transform: none; }
+    .work-card-cover:hover, .work-rail[data-hover-held] .work-card-cover, .work-card-cover[data-hover-replay] { transform: none; }
   }
   @font-face { font-family: "Necto Mono"; src: url("fonts/NectoMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
   .work-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 16px; }

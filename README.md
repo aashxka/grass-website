@@ -81,6 +81,8 @@ Add `?tune` to the URL to open a [DialKit](https://github.com/joshpuckett/dialki
 
 Panel values are saved in your browser (`localStorage` key `grass-website-tune`) and only apply when `?tune` is in the URL, so the plain URL always shows the deployed look. **Copy parameters** copies the current values to send back for baking in as the new defaults, and **Save version** keeps snapshots to compare. Without `?tune` the panel's code and styles are never downloaded.
 
+A separate **Card hover** panel tunes the Work covers' hover: the spring (stiffness/damping/mass, or duration/bounce), lift (scale) and the shadow's offset, blur, opacity and colour. **Hold hover** pins every cover in its hovered state and **Replay on first card** bounces one in and out. Its values live under `localStorage` key `grass-website-card-hover`; the shipped defaults are the `--cover-*` custom properties on `.work-rail` in `index.html`.
+
 DialKit 2.1.0's plain-JavaScript build is vendored in `vendor/dialkit/` (MIT, Josh Puckett); `tune.js` builds the panel and drives the scene through a small API that `index.html` hands it.
 
 ## Case-study sheet
