@@ -399,47 +399,16 @@ function load() {
     decorated.add(doc);
     doc.documentElement.setAttribute("data-case-study-sheet", "");
     const style = doc.createElement("style");
-    style.textContent = FRAME_CSS + `
-      @font-face {
-        font-family: "Season Mix";
-        src: url("${location.origin}/fonts/season-mix-trial-regular.woff") format("woff");
-        font-display: swap;
-      }
-      @font-face {
-        font-family: "Stevie Sans Book";
-        src: url("${location.origin}/fonts/stevie-sans-book.woff") format("woff");
-        font-display: swap;
-      }
-
-      /* Framer's shared case-study title preset is rendered as a paragraph. */
-      html[data-case-study-sheet] :is(h1,h2,h3,h4,h5,h6,[role="heading"],.framer-styles-preset-tjvczo).framer-text {
-        font-family: "Season Mix", Georgia, serif !important;
-        font-weight: 400 !important;
-        letter-spacing: -0.02em !important;
-        line-height: 1.15 !important;
-        text-wrap: balance;
-      }
-      html[data-case-study-sheet] :is(h1,.framer-styles-preset-tjvczo).framer-text {
-        letter-spacing: -0.03em !important;
-        line-height: 1.08 !important;
-      }
-      html[data-case-study-sheet] h6.framer-text {
-        letter-spacing: 0.04em !important;
-        line-height: 1.3 !important;
-      }
-      html[data-case-study-sheet] :is(p,li,blockquote,figcaption).framer-text:not(.framer-styles-preset-tjvczo,[role="heading"]) {
-        font-family: "Stevie Sans Book", system-ui, sans-serif !important;
-        letter-spacing: normal !important;
-        line-height: 1.55 !important;
-        text-wrap: pretty;
-      }
-      html[data-case-study-sheet] :is(h1,h2,h3,h4,h5,h6,[role="heading"],p,li,blockquote,figcaption).framer-text
-        :where(a,span,strong,b,em,i,mark).framer-text {
-        font-family: inherit !important;
-        letter-spacing: inherit !important;
-        line-height: inherit !important;
-      }
-    `;
+    // Use the Framer page's own styles, including its responsive typography.
+    // Alias each Bricolage face so spans and Framer's subset families resolve too.
+    const families = new Set(["Bricolage Grotesque"]);
+    for (const face of doc.fonts) {
+      const family = face.family.replace(/^["']|["']$/g, "");
+      if (/bricolage[\\s_-]*grotesque/i.test(family)) families.add(family);
+    }
+    style.textContent = FRAME_CSS + Array.from(families, family =>
+      `@font-face { font-family: ${JSON.stringify(family)}; src: local("Season Mix Medium"), local("SeasonMix-Medium"), local("Season Mix TRIAL Medium"), local("SeasonMix-TRIAL-Medium"); font-weight: 1 1000; font-display: swap; }`
+    ).join("\n");
     doc.head.append(style);
     // A page without phone breakpoints asks for a fixed viewport (Framer writes width=1200). Phones honour
     // that by zooming out; an iframe ignores it, so on touch screens the sheet lays it out there and scales.
