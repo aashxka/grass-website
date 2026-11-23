@@ -85,11 +85,11 @@ function openDesktopFontDatabase() {
   return desktopFontDatabase;
 }
 
-function createIntroFontControl(element, fallback) {
+function createIntroFontControl(element, fallback, property = "--intro-font", key = element.id) {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = ".woff2,.woff,.ttf,.otf";
-  const desktopFamily = `Portfolio desktop ${element.id}`;
+  const desktopFamily = `Portfolio desktop ${key}`;
   let desktopFace;
   let fontRevision = 0;
   let googleFamily = "";
@@ -112,7 +112,7 @@ function createIntroFontControl(element, fallback) {
       try {
         const database = await openDesktopFontDatabase();
         const store = database.transaction("fonts").objectStore("fonts");
-        const request = store.get(element.id);
+        const request = store.get(key);
         request.onsuccess = async () => {
           try {
             if (request.result && await applyDesktopFont(request.result, revision)) refresh();
@@ -143,7 +143,7 @@ function createIntroFontControl(element, fallback) {
           const database = await openDesktopFontDatabase();
           if (revision !== fontRevision) return;
           const transaction = database.transaction("fonts", "readwrite");
-          transaction.objectStore("fonts").put(data, element.id);
+          transaction.objectStore("fonts").put(data, key);
           transaction.onabort = () => console.warn("Desktop font could not be saved for the next visit", transaction.error);
         } catch (error) {
           console.warn("Desktop font could not be saved for the next visit", error);
@@ -169,123 +169,115 @@ function createIntroFontControl(element, fallback) {
       let family = selection;
       if (selection === "Google Font") family = googleFamily || fallback;
       if (selection === "Desktop font") family = installedFamily.trim() || desktopFace?.family || fallback;
-      element.style.setProperty("--intro-font", `"${CSS.escape(family)}", "${fallback}", system-ui, sans-serif`);
+      element.style.setProperty(property, `"${CSS.escape(family)}", "${fallback}"`);
     },
   };
 }
 
+// Homepage panel (?tune): the home's sizes and spacing first, then each part's copy, colour and font.
+// Slider defaults are read from homepage.css, so the stylesheet stays the one source of truth.
+//
+//   Text sizes   name, headline, list; headline line height + tracking; list line height
+//   Spacing      headline → list, row gap, year → place, place → role, block centre, name top / left
+//   Name · Headline        copy, colour, font (incl. a Google or desktop font)
+//   Years & places · Roles colour, font
 export async function mountHomepageTune() {
   await getDialRoot();
   const homepage = document.querySelector(".homepage");
-  const nav = homepage.querySelector("#nav");
-  const intro = homepage.querySelector(".intro");
-  const select = (options, defaultValue) => ({
-    type: "select", options: options.map(value => ({ value, label: value })), default: defaultValue,
+  const css = getComputedStyle(homepage);
+  const fontSelect = defaultValue => ({
+    type: "select",
+    options: ["Season Mix", "Necto Mono", "Stevie Sans Book", "Outfit", "Bricolage Grotesque", "Google Font", "Desktop font"]
+      .map(value => ({ value, label: value })),
+    default: defaultValue,
   });
-  const fontSelect = defaultValue => select(
-    ["Gaegu", "Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
-    defaultValue,
-  );
   const text = (defaultValue, placeholder) => ({ type: "text", default: defaultValue, placeholder });
   const colour = defaultValue => ({ type: "color", default: defaultValue });
-  const googleFont = () => text("instrument sans", "Exact family name, e.g. Inter");
-  const sliders = [
-    ["Text width (%)", "--text-width", 24, 20, 100, "%"],
-    ["Intro offset (px)", "--intro-offset", 24, 0, 140, "px"],
-    ["Intro top (px)", "--intro-top", 0, 0, 220, "px"],
-    ["Intro left (px)", "--intro-left", 24, 0, 160, "px"],
-    ["Intro right (px)", "--intro-right", 24, 0, 160, "px"],
-    ["Heading size (px)", "--heading-size", 49, 16, 96, "px"],
-    ["Section spacing (px)", "--section-gap", 24, 0, 100, "px"],
-    ["Socials spacing (px)", "--social-gap", 20, 0, 100, "px"],
+
+  // [label, custom property on .homepage, min, max, step, unit]
+  const DIALS = {
+    "Text sizes": [
+      ["Name (px)", "--name-size", 10, 40, 1, "px"],
+      ["Headline (px)", "--headline-size", 14, 96, 1, "px"],
+      ["List (px)", "--list-size", 10, 32, 1, "px"],
+      ["Headline line height", "--headline-leading", 0.8, 2, 0.01, ""],
+      ["Headline tracking (em)", "--headline-tracking", -0.08, 0.1, 0.005, "em"],
+      ["List line height", "--list-leading", 1, 2.4, 0.01, ""],
+    ],
+    Spacing: [
+      ["Headline → list (px)", "--list-gap", 0, 200, 1, "px"],
+      ["Row gap (px)", "--row-gap", 0, 80, 1, "px"],
+      ["Year → place (px)", "--label-gap", 0, 80, 1, "px"],
+      ["Place → role (px)", "--column-gap", 0, 200, 1, "px"],
+      ["Block centre (% of height)", "--block-centre", 20, 70, 1, ""],
+      ["Name top (px)", "--name-top", 0, 120, 1, "px"],
+      ["Name left (px)", "--name-left", 0, 120, 1, "px"],
+    ],
+  };
+  const dials = Object.entries(DIALS).flatMap(([folder, rows]) => rows.map(([label, property, min, max, step, unit]) => ({
+    folder, label, property, min, max, step, unit,
+    value: +(Math.round(parseFloat(css.getPropertyValue(property)) / step) * step).toFixed(3),
+  })));
+  const config = {};
+  for (const { folder, label, value, min, max, step } of dials) {
+    (config[folder] ??= {})[label] = [value, min, max, step];
+  }
+
+  // Each part's font goes in its own custom property, so the list's two columns can differ.
+  const list = homepage.querySelector(".intro-list");
+  const parts = [
+    { name: "Name", element: homepage.querySelector(".intro-name"), font: "Necto Mono", colour: "#1b1b1b", copy: true },
+    { name: "Headline", element: homepage.querySelector(".intro-headline"), font: "Season Mix", colour: "#1b1b1b", copy: true },
+    { name: "Years & places", element: list, property: "--label-font", colourProperty: "--ink-50", font: "Stevie Sans Book", colour: "#1b1b1b80" },
+    { name: "Roles", element: list, property: "--role-font", colourProperty: "--ink", font: "Stevie Sans Book", colour: "#1b1b1b" },
   ];
-  const config = Object.fromEntries(sliders.map(([label, , value, min, max]) => [
-    label, [value, min, max, 1],
-  ]));
-  const heading = intro.querySelector("h1");
-  const contact = intro.querySelector(".socials");
-  const email = contact.querySelector("[data-copy]");
-  const headingFont = createIntroFontControl(heading, "Outfit");
-  const groups = [
-    { name: "First paragraph", element: intro.querySelector("#intro-first"), size: 16, colour: "#5f5f5f" },
-    { name: "Second paragraph", element: intro.querySelector("#intro-second"), size: 16, colour: "#5f5f5f" },
-    { name: "Contact links", element: contact, size: 14, colour: "#1b1b1bb3" },
-  ];
-  config["Heading text"] = text(heading.textContent);
-  config["Heading colour"] = colour("#1b1b1b");
-  config["Heading font"] = fontSelect("Google Font");
-  config["Google font family"] = text("gaegu", "Exact family name, e.g. Inter");
-  config["Choose desktop font file"] = { type: "action" };
-  config["Intro position"] = select(["Top left", "Top center", "Top right"], "Top left");
-  config["Text alignment"] = select(["Left", "Center", "Right"], "Left");
-  config["Nav alignment"] = select(["Left", "Center", "Right"], "Right");
-  const desktopActions = new Map([["Choose desktop font file", headingFont.choose]]);
-  for (const group of groups) {
-    group.font = createIntroFontControl(group.element, "Stevie Sans Book");
-    group.labels = group.element === contact
-      ? [...contact.querySelectorAll(".social-label")].map(label => [label.dataset.introLabel, label])
-      : [["Text", group.element]];
-    config[group.name] = {
+  const desktopActions = new Map();
+  for (const part of parts) {
+    part.control = createIntroFontControl(part.element, part.font, part.property, part.name);
+    config[part.name] = {
       _collapsed: true,
-      ...Object.fromEntries(group.labels.map(([label, element]) => [label, text(element.textContent)])),
-      "Size (px)": [group.size, 8, 72, 1],
-      Colour: colour(group.colour),
-      Font: fontSelect("Stevie Sans Book"),
-      "Google font family": googleFont(),
-      ...(group.element === contact ? {} : {
-        "Installed body font name": text("", "Exact installed family name"),
-      }),
+      ...(part.copy ? { Text: text(part.element.textContent) } : {}),
+      Colour: colour(part.colour),
+      Font: fontSelect(part.font),
+      "Google font family": text("", "Exact family name, e.g. Inter"),
+      "Installed font name": text("", "Exact installed family name"),
       "Choose desktop font file": { type: "action" },
     };
-    desktopActions.set(`${group.name}.Choose desktop font file`, group.font.choose);
+    desktopActions.set(`${part.name}.Choose desktop font file`, part.control.choose);
   }
 
   const kit = createDialKit("Homepage", config, {
     id: "homepage",
-    persist: { key: "grass-website-homepage-v2" },
+    persist: { key: "grass-website-homepage-v4" },   // v4: her mock (centred headline + list)
     onAction: path => desktopActions.get(path)?.(),
   });
 
-  function applyText(element, value) {
-    if (value !== element.textContent) element.textContent = value;
-  }
-
   function apply(values) {
-    for (const [label, property, defaultValue, , , unit] of sliders) {
-      const value = values[label];
+    for (const { folder, label, property, value: defaultValue, unit } of dials) {
+      const value = values[folder][label];
       if (value === defaultValue) homepage.style.removeProperty(property);
       else homepage.style.setProperty(property, value + unit);
     }
-    applyText(heading, values["Heading text"]);
-    heading.style.color = values["Heading colour"] === "#1b1b1b" ? "" : values["Heading colour"];
-    headingFont.apply(values["Heading font"], values["Google font family"]);
-    for (const { name, element, size, colour: defaultColour, font, labels } of groups) {
+    for (const { name, element, colour: defaultColour, colourProperty, control, copy } of parts) {
       const settings = values[name];
-      for (const [label, target] of labels) applyText(target, settings[label]);
-      element.style.fontSize = settings["Size (px)"] === size ? "" : `${settings["Size (px)"]}px`;
-      element.style.color = settings.Colour === defaultColour ? "" : settings.Colour;
-      font.apply(settings.Font, settings["Google font family"], settings["Installed body font name"]);
+      if (copy && settings.Text !== element.textContent) element.textContent = settings.Text;
+      const value = settings.Colour === defaultColour ? "" : settings.Colour;
+      if (colourProperty) element.style.setProperty(colourProperty, value);
+      else element.style.color = value;
+      control.apply(settings.Font, settings["Google font family"], settings["Installed font name"]);
     }
-    email.setAttribute("aria-label", `${values["Contact links"].Email.trim() || "Email"} (copy address)`);
-    intro.dataset.position = values["Intro position"].toLowerCase().replace(" ", "-");
-    intro.dataset.textAlign = values["Text alignment"].toLowerCase();
-    nav.dataset.align = values["Nav alignment"].toLowerCase();
   }
   kit.subscribe(apply);
   const refresh = () => apply(kit.getValues());
-  headingFont.onChoose(() => {
-    kit.setValue("Heading font", "Desktop font");
-    refresh();
-  });
-  headingFont.restore(refresh);
-  for (const { name, font } of groups) {
-    font.onChoose(() => {
-      if (name !== "Contact links") kit.setValue(`${name}.Installed body font name`, "");
+  for (const { name, control } of parts) {
+    control.onChoose(() => {
+      kit.setValue(`${name}.Installed font name`, "");
       kit.setValue(`${name}.Font`, "Desktop font");
       refresh();
     });
-    font.restore(refresh);
+    control.restore(refresh);
   }
+  refresh();
   createDialKit("Scroll motion", motionDials, {
     id: "portfolio-scroll-motion",
     persist: { key: "portfolio-scroll-motion" },

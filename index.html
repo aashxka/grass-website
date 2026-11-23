@@ -8,10 +8,9 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400&display=swap">
-<link rel="stylesheet" href="homepage.css?v=homepage-defaults">
+<link rel="preload" href="fonts/season-mix-trial-light.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="fonts/NectoMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="homepage.css?v=intro-mock">
 <script type="importmap">
 {
   "imports": {
@@ -263,7 +262,7 @@
 <p class="seattle" id="seattle"></p>
 </div>
 <div class="homepage">
-<nav class="nav" id="nav" aria-label="Main" data-align="right">
+<nav class="nav" id="nav" aria-label="Main">
   <span class="nav-thumb" aria-hidden="true" hidden></span>
   <a href="#work" data-label="Work" aria-label="Work"><span class="nav-label">Work</span></a>
   <a href="#about" data-label="About" aria-label="About"><span class="nav-label">About</span></a>
@@ -272,40 +271,16 @@
 </nav>
 <main>
 <div class="home-scroll" id="home">
-<section class="intro" aria-labelledby="intro-title" data-position="top-left" data-text-align="left">
-  <h1 id="intro-title">aashika ashok</h1>
-  <p id="intro-first">Product designer shaping technology around humans using design, research, motion and code.</p>
-  <p id="intro-second">Previously, I did this across e-commerce, AI tools and legacy systems and recently became a Master of Design from UW.</p>
-  <div class="socials" id="intro-contact" role="group" aria-label="Contact">
-    <a class="social-link" href="https://www.linkedin.com/in/aashikaashok/" target="_blank" rel="noopener">
-      <svg class="social-icon linkedin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path pathLength="1" d="M7 10V17"/>
-        <path pathLength="1" d="M11 13V17M11 13C11 11.3431 12.3431 10 14 10C15.6569 10 17 11.3431 17 13V17M11 13V10"/>
-        <path d="M7.125 6.75H7M7.25 6.75C7.25 6.88807 7.13807 7 7 7C6.86193 7 6.75 6.88807 6.75 6.75C6.75 6.61193 6.86193 6.5 7 6.5C7.13807 6.5 7.25 6.61193 7.25 6.75Z"/>
-        <path d="M3 12C3 7.75736 3 5.63604 4.31802 4.31802C5.63604 3 7.75736 3 12 3C16.2426 3 18.364 3 19.682 4.31802C21 5.63604 21 7.75736 21 12C21 16.2426 21 18.364 19.682 19.682C18.364 21 16.2426 21 12 21C7.75736 21 5.63604 21 4.31802 19.682C3 18.364 3 16.2426 3 12Z"/>
-      </svg>
-      <span class="social-label" data-intro-label="LinkedIn">LinkedIn</span>
-    </a>
-    <span aria-hidden="true"></span>
-    <button class="social-link" type="button" data-copy="aashikaashok.work@gmail.com" aria-label="Email (copy address)">
-      <svg class="social-icon email" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <path d="M4.5 10C4.5 6.22876 4.5 4.34315 5.67157 3.17157C6.84315 2 8.72876 2 12.5 2H14C17.7712 2 19.6569 2 20.8284 3.17157C22 4.34315 22 6.22876 22 10V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H12.5C8.72876 22 6.84315 22 5.67157 20.8284C4.5 19.6569 4.5 17.7712 4.5 14V10Z"/>
-        <path pathLength="1" stroke-linecap="round" stroke-linejoin="round" d="M15.25 10.0002V12.5002C15.25 13.3286 15.9216 14.0002 16.75 14.0002C17.5784 14.0002 18.25 13.3286 18.25 12.5002V12C18.25 9.23858 16.0114 7 13.25 7C10.4886 7 8.25 9.23858 8.25 12C8.25 14.7614 10.4886 17 13.25 17C14.3758 17 15.4147 16.6279 16.2505 16M15.25 12.0002C15.25 13.1048 14.3546 14.0002 13.25 14.0002C12.1454 14.0002 11.25 13.1048 11.25 12.0002C11.25 10.8956 12.1454 10.0002 13.25 10.0002C14.3546 10.0002 15.25 10.8956 15.25 12.0002Z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6L2 6M4.5 12L2 12M4.5 18H2"/>
-      </svg>
-      <span class="social-label" data-intro-label="Email">Email</span>
-      <span class="copied" aria-hidden="true"></span>
-    </button>
-    <span aria-hidden="true"></span>
-    <a class="social-link" href="aashika-ashok-resume.pdf" target="_blank" rel="noopener">
-      <svg class="social-icon resume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-        <path d="M12.8809 7.01656L17.6538 8.28825M11.8578 10.8134L14.2442 11.4492M11.9765 17.9664L12.9311 18.2208C15.631 18.9401 16.981 19.2998 18.0445 18.6893C19.108 18.0787 19.4698 16.7363 20.1932 14.0516L21.2163 10.2548C21.9398 7.57005 22.3015 6.22768 21.6875 5.17016C21.0735 4.11264 19.7235 3.75295 17.0235 3.03358L16.0689 2.77924C13.369 2.05986 12.019 1.70018 10.9555 2.31074C9.89196 2.9213 9.53023 4.26367 8.80678 6.94841L7.78366 10.7452C7.0602 13.4299 6.69848 14.7723 7.3125 15.8298C7.92652 16.8874 9.27651 17.2471 11.9765 17.9664Z"/>
-        <path d="M12 20.9462L11.0477 21.2055C8.35403 21.939 7.00722 22.3057 5.94619 21.6832C4.88517 21.0607 4.52429 19.692 3.80253 16.9546L2.78182 13.0833C2.06006 10.3459 1.69918 8.97718 2.31177 7.89892C2.84167 6.96619 4 7.00015 5.5 7.00003"/>
-      </svg>
-      <span class="social-label" data-intro-label="Resume">Resume</span>
-    </a>
-    <span class="copy-status" role="status"></span>
-  </div>
+<h1 class="intro-name" id="intro-title">Aashika Ashok</h1>
+<section class="intro" aria-labelledby="intro-title">
+  <p class="intro-headline" id="intro-headline">Product designer obsessed with simplicity,
+human behavior and aesthetics.</p>
+  <ul class="intro-list" aria-label="Experience">
+    <li><span class="intro-label"><span>26</span><span>Sound Transit</span></span><span class="intro-role">Search Interface Redesign + LLM Content</span></li>
+    <li><span class="intro-label"><span>25</span><span>Verdigris</span></span><span class="intro-role">AI Assistant for data centre technicians</span></li>
+    <li><span class="intro-label"><span>24 – 26</span><span>U of Washington</span></span><span class="intro-role">MS Human Centred Design + Engineering</span></li>
+    <li><span class="intro-label"><span>23 – 24</span><span>Elastic Path</span></span><span class="intro-role">Design System and E-Commerce Workflows</span></li>
+  </ul>
 </section>
 </div>
 <section class="work-view" id="work" aria-label="Work" tabindex="-1">
@@ -365,33 +340,19 @@ if (new URLSearchParams(location.search).has("annotate")) {
 }
 </script>
 <script>
-// Socials: hover and focus are plain CSS; the script only copies the email.
+// Home: the centred block needs its own height to put its middle on the sky (homepage.css, --block-h).
 (() => {
-  const bar = document.querySelector(".socials");
-  const status = bar.querySelector(".copy-status");
-  const label = bar.querySelector(".copied");
-  let labelTimer = 0;
-  // Mail copies the address (falls back to opening the mail app)
-  const mail = bar.querySelector("[data-copy]");
-  mail.addEventListener("click", async () => {
-    const address = mail.dataset.copy;
-    try { await navigator.clipboard.writeText(address); }
-    catch { location.href = "mailto:" + address; return; }
-    status.textContent = label.textContent = "Email copied";
-    label.classList.add("show");
-    clearTimeout(labelTimer);
-    labelTimer = setTimeout(() => {
-      label.classList.remove("show");
-      status.textContent = "";
-    }, 1600);
-  });
+  const intro = document.querySelector(".intro");
+  new ResizeObserver(([entry]) => {
+    intro.style.setProperty("--block-h", entry.borderBoxSize[0].blockSize + "px");
+  }).observe(intro);
 })();
 </script>
 
 <script type="module">
 const tune = new URLSearchParams(location.search).get("tune");
 if (tune !== null && tune !== "0") {
-  import("./tune.js?v=homepage-defaults").then(({ mountHomepageTune }) => mountHomepageTune())
+  import("./tune.js?v=intro-mock").then(({ mountHomepageTune }) => mountHomepageTune())
     .catch(error => console.warn("Homepage controls could not load", error));
 }
 </script>
@@ -1668,7 +1629,7 @@ requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=homepage-defaults").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=intro-mock").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {

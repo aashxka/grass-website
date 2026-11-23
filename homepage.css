@@ -12,41 +12,64 @@
   font-style: normal;
   font-display: swap;
 }
+/* Season Mix Light (Displaay), the TRIAL cut from befonts: personal use only. */
+@font-face {
+  font-family: "Season Mix";
+  src: url("fonts/season-mix-trial-light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+}
 
+/* Home, from her mock: the name top left, 24px from both edges, and one block centred on the sky:
+   a Season Mix headline over a list of years, places and roles. Every size and gap is a dial in ?tune.
+   The mock's type sits at name 15 : list 15 : headline 30 (Season Mix Light). */
 .homepage {
+  --ink: #1b1b1b;
+  --ink-50: rgb(27 27 27 / 50%);
   --page-edge: 24px;
-  --text-width: 24%;
-  --intro-offset: 24px;
-  --intro-top: 0px;
-  --intro-left: 24px;
-  --intro-right: 24px;
-  --heading-font: "Gaegu";
-  --heading-size: 49px;
-  --section-gap: 24px;
-  --social-gap: 20px;
   --page-top: calc(24px + env(safe-area-inset-top, 0px));
+  --name-size: 15px;
+  --name-top: 24px;
+  --name-left: 24px;
+  --headline-size: 30px;
+  --headline-leading: 1.44;
+  --headline-tracking: 0em;
+  --list-size: 15px;
+  --list-leading: 1.5;
+  --list-gap: 43px;          /* headline → list */
+  --row-gap: 15px;
+  --label-gap: 16px;         /* year → place */
+  --column-gap: 24px;        /* longest place → role */
+  --block-centre: 41;        /* % of the window's height, the middle of the sky above the hills */
+  --block-min-top: 112px;
   position: relative;
   z-index: 6;
   pointer-events: none;
-  color: #1b1b1b;
+  color: var(--ink);
   font-family: "Stevie Sans Book", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+.homepage ::selection {
+  background: rgb(27 27 27 / 12%);
+  color: var(--ink);
+}
+
 .home-scroll {
-  --intro-safe-top: calc(var(--intro-top, 24px) + env(safe-area-inset-top, 0px));
+  position: relative;
   display: flow-root;
-  padding: var(--intro-safe-top)
-    calc(min(var(--intro-right, var(--page-edge)), 25vw) + env(safe-area-inset-right, 0px))
+  padding: 0
+    calc(var(--page-edge) + env(safe-area-inset-right, 0px))
     var(--landscape-runway, calc(54vh / 1.3))
-    calc(min(var(--intro-left, var(--page-edge)), 25vw) + env(safe-area-inset-left, 0px));
+    calc(var(--page-edge) + env(safe-area-inset-left, 0px));
   overflow-anchor: none;
 }
 
 .homepage .nav,
-.homepage h1,
-.homepage p,
-.homepage .social-link {
+.intro-name,
+.intro-headline,
+.intro-list {
   pointer-events: auto;
 }
 
@@ -57,217 +80,88 @@
   right: calc(var(--page-edge) + env(safe-area-inset-right, 0px));
 }
 
-.homepage .nav[data-align="left"] {
-  left: calc(var(--page-edge) + env(safe-area-inset-left, 0px));
-  right: auto;
-}
-
-.homepage .nav[data-align="center"] {
-  inset-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
-  margin-inline: auto;
-}
-
-.homepage:has(.nav[data-align="left"]) .home-scroll,
-.home-scroll:has(.intro:is([data-position="top-center"], [data-position="top-right"])) {
-  padding-top: max(var(--intro-safe-top), calc(var(--page-top) + 68px));
-}
-
-.intro {
-  --default-text-width: max(23rem, 32%);
-  display: grid;
-  gap: var(--section-gap, 24px);
-  width: clamp(min(100%, 14rem), var(--text-width, var(--default-text-width)), 100%);
-  margin-top: var(--intro-offset, 0px);
-}
-
-.intro[data-position="top-center"] { margin-inline: auto; }
-.intro[data-position="top-right"] { margin-inline-start: auto; }
-
-.intro[data-text-align="center"] { text-align: center; }
-.intro[data-text-align="right"] { text-align: right; }
-.intro[data-text-align="center"] .socials { justify-content: center; }
-.intro[data-text-align="right"] .socials { justify-content: flex-end; }
-
-.intro h1,
-.intro p {
+.intro-name {
+  position: absolute;
+  top: calc(var(--name-top) + env(safe-area-inset-top, 0px));
+  left: calc(var(--name-left) + env(safe-area-inset-left, 0px));
   margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.intro h1 {
-  font-family: var(--intro-font, var(--heading-font, "Gaegu"), "Stevie Sans Book", system-ui, sans-serif);
-  font-size: var(--heading-size, 2rem);
+  color: var(--ink);
+  font-family: var(--intro-font, "Necto Mono"), ui-monospace, monospace;
+  font-size: var(--name-size);
   font-weight: 400;
-  line-height: 1.125;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.intro p {
-  color: #5f5f5f;
-  font-family: var(--intro-font, inherit);
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-.socials {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  margin-top: calc(var(--social-gap, 20px) - var(--section-gap, 24px));
-  color: rgb(27 27 27 / 70%);
-  font-family: var(--intro-font, inherit);
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-.socials > [aria-hidden="true"] {
-  width: 1px;
-  height: 15px;
-  background: currentColor;
-  opacity: 0.55;
-}
-
-.social-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 28px;
+/* The block is as wide as its longest line and centred; its middle sits at --block-centre of the
+   window (index.html measures its height into --block-h), never closer than --block-min-top. */
+.intro {
+  width: max-content;
   max-width: 100%;
+  margin-inline: auto;
+  margin-top: max(var(--block-min-top), calc(var(--block-centre) * 1svh - var(--block-h, 18rem) / 2));
+}
+
+.intro-headline {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--intro-font, "Season Mix"), "Stevie Sans Book", system-ui, sans-serif;
+  font-size: var(--headline-size);
+  font-weight: 300;
+  line-height: var(--headline-leading);
+  letter-spacing: var(--headline-tracking);
+  white-space: pre-line;   /* the copy's own line break, after "simplicity," */
+  text-wrap: balance;
+}
+
+.intro-list {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: var(--row-gap) var(--column-gap);
+  margin: var(--list-gap) 0 0;
   padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: none;
-  cursor: pointer;
-  transition: color 180ms, opacity 180ms;
+  list-style: none;
+  font-size: var(--list-size);
+  line-height: var(--list-leading);
 }
 
-.social-label { overflow-wrap: anywhere; }
-
-.social-link:focus-visible {
-  color: #1b1b1b;
-  opacity: 0.82;
-  outline: 1px solid currentColor;
-  outline-offset: 4px;
+.intro-list li {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .social-link:hover {
-    color: #1b1b1b;
-    opacity: 0.82;
-  }
-}
-
-.social-icon {
-  display: block;
-  flex: none;
-  width: 16px;
-  height: 16px;
-  overflow: visible;
-}
-
-.social-icon path {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.linkedin path:nth-child(-n + 2),
-.email path:nth-child(2) {
-  stroke-dasharray: 1;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .social-link:is(:hover, :focus-visible) .linkedin path:nth-child(-n + 2) {
-    animation: social-draw 470ms cubic-bezier(.22, .72, .26, 1) both;
-  }
-
-  .social-link:is(:hover, :focus-visible) .linkedin path:nth-child(2) {
-    animation-delay: 70ms;
-  }
-
-  .social-link:is(:hover, :focus-visible) .linkedin path:nth-child(3) {
-    animation: social-dot 420ms cubic-bezier(.2, .8, .2, 1) 130ms both;
-  }
-
-  .social-link:is(:hover, :focus-visible) .email path:nth-child(2) {
-    animation: social-draw 590ms cubic-bezier(.22, .72, .26, 1) both;
-  }
-
-  .social-link:is(:hover, :focus-visible) .email path:nth-child(3) {
-    animation: social-spine 500ms ease-out both;
-  }
-
-  .social-link:is(:hover, :focus-visible) .resume path:first-child {
-    animation: social-page 540ms cubic-bezier(.2, .8, .2, 1) both;
-  }
-}
-
-@keyframes social-draw {
-  from { stroke-dashoffset: 1; opacity: .48; }
-  to { stroke-dashoffset: 0; opacity: 1; }
-}
-
-@keyframes social-dot {
-  0% { transform: scale(.55); opacity: .4; }
-  68% { transform: scale(1.18); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes social-spine {
-  from { transform: translateX(-.8px); opacity: .6; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes social-page {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  45% { transform: translateY(-1.4px) rotate(3deg); }
-}
-
-.copied {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 7px 11px;
-  border: 1px solid rgb(27 27 27 / 14%);
-  border-radius: 999px;
-  background: #fff;
-  color: #1b1b1b;
-  font-size: 0.8125rem;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 150ms ease-out;
-}
-
-.copied.show { opacity: 1; }
-
-.copy-status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  clip-path: inset(50%);
-  overflow: hidden;
+.intro-label {
+  display: flex;
+  gap: var(--label-gap);
+  color: var(--ink-50);
+  font-family: var(--label-font, "Stevie Sans Book"), system-ui, sans-serif;
   white-space: nowrap;
 }
 
-@media (max-width: 1024px) {
-  .homepage:has(.nav[data-align="center"]) .home-scroll {
-    padding-top: max(var(--intro-safe-top), calc(var(--page-top) + 76px));
-  }
+.intro-role {
+  color: var(--ink);
+  font-family: var(--role-font, "Stevie Sans Book"), system-ui, sans-serif;
 }
 
+/* Phones: the name drops under the nav, and each row stacks its place over its role. */
 @media (max-width: 720px) {
-  .home-scroll,
-  .homepage:has(.nav[data-align="left"]) .home-scroll,
-  .home-scroll:has(.intro:is([data-position="top-center"], [data-position="top-right"])) {
-    padding-top: max(var(--intro-safe-top), calc(var(--page-top) + 76px));
+  .homepage {
+    --name-top: 98px;        /* 20px under the 54px phone nav */
+    --block-min-top: 164px;  /* 48px under the name */
+    --headline-size: 26px;
   }
-  .intro { --default-text-width: min(100%, 26rem); }
+
+  .intro { width: auto; }
+
+  .intro-list {
+    grid-template-columns: 1fr;
+    row-gap: calc(var(--row-gap) + 6px);
+  }
+
+  .intro-label { gap: calc(var(--label-gap) * .75); }
 }
 
 /* Keep the tuning panel below the navigation, including when every group is expanded. */

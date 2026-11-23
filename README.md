@@ -2,7 +2,7 @@
 
 Aashika's portfolio hero: rolling grass hills, a wooden desk with a cream computer and a coffee set, drawn in real time with WebGL2. Every blade is its own shape and sways on its own, and the wind follows Seattle's live wind.
 
-It is a static page with no build step: `index.html`, `desk.js` (the desk set), `touch.js` (blades part under the cursor or a finger), `crt-face.jpg` (the screen), `fonts/stevie-sans-book.woff` (the nav font), `aashika-ashok-resume.pdf` (the contact bar's resume), and `tune.js` + `vendor/dialkit/` for the optional tune panel.
+It is a static page with no build step: `index.html`, `desk.js` (the desk set), `touch.js` (blades part under the cursor or a finger), `crt-face.jpg` (the screen), `fonts/stevie-sans-book.woff` (the nav font), `aashika-ashok-resume.pdf` (her resume), and `tune.js` + `vendor/dialkit/` for the optional tune panel.
 
 ## Run it
 
@@ -43,17 +43,25 @@ A segmented pill nav sits top centre, 24px from the top: Work, About, Experiment
 
 Clicking an item slides the thumb to it (260 ms ease-out) and sets the URL hash (`#work`, `#about`, `#experiments`, `#photos`), so back and forward move it too. The pages behind them do not exist yet. Phones get tighter padding (and 13px text under 360px) so all four fit.
 
-### Socials
+### Contact links
 
-Top right, 60px from the edge: three flat icon buttons (mail, LinkedIn, resume) sitting straight on the page, with no track or thumb. Each sits in an invisible 32px button against the nav's 48px bar, centred on the nav's centre line. At rest the icons are #1B1B1B at 53%, which lands on the nav's unselected #878787; on hover they go to full ink, with no circle or edge around them. Each presses in to 0.96 while held, and has a 36 × 40 hit area. Below 820px wide they sit centred, 8px under the nav.
-
-The icons are one set drawn from Stevie Sans Book itself, each exactly 14 × 14px. They live in the font's 1000-unit em at the nav's 14px, so every weight matches the text: walls 81 units thick on the sides (its stems) and 68 on top and bottom (its arms), corners shaped like its o (a superellipse, exponent 2.23 outside and 2.32 inside), and diagonals 75 like its v. Mail is a v-shaped flap with the v's flat-cut point. LinkedIn is the font's real i and n, scaled into the square and thickened back to its weight, so the notched shoulder and square dot are Stevie's own. The resume has a folded corner (one stem, one arm) and lines cut like its hyphen and en dash. The geometry was read from the installed `Stevie Sans Book.ttf` outlines.
-
-Mail copies aashikaashok.work@gmail.com and shows a flat "Email copied" label under the mail icon (if the clipboard is blocked it opens the mail app instead); LinkedIn opens her profile in a new tab; Resume opens `aashika-ashok-resume.pdf` in a new tab.
+The home has no contact links for now: her mock leaves them out, so the LinkedIn, Email and Resume row was removed (it is in git history). `aashika-ashok-resume.pdf` stays in the repo.
 
 ### Seattle line
 
 Bottom right, 60px from the edge and 24px from the bottom (20px on phones), in white over the grass: Seattle's local time and the live wind, for example "8:37 PM PST in Seattle · 4 mph S wind". The time comes from `Intl.DateTimeFormat` in America/Los_Angeles and ticks over on the minute. The wind is the same Open-Meteo reading that drives the grass (speed in mph, compass direction it blows from), refreshed every 10 minutes; under 1 mph it says "calm". Without a reading (offline or `?seattle=0`) it shows the time alone. Stevie Sans Book 14px at 92% white with a soft shadow, fading in with the scene; it ignores the pointer so the grass under it still parts.
+
+## Home
+
+From her mock, all in #1B1B1B:
+
+- **Name**: "AASHIKA ASHOK" in Necto Mono 15px, uppercase, 24px from the top and left edges. On phones it sits 20px under the nav.
+- **Headline**: "Product designer obsessed with simplicity, / human behavior and aesthetics." in Season Mix Light 30px (26px on phones), line height 1.44, breaking after "simplicity,". `fonts/season-mix-trial-light.woff` is the TRIAL cut from befonts, licensed for personal use only.
+- **List**: four rows of year (two digits, "24 – 26") and place (Stevie Sans Book 15px at 50% #1B1B1B, 16px apart) and role (Stevie Sans Book 15px), 43px under the headline, rows 15px apart, roles in one column 24px past the longest place. On phones each place stacks over its role.
+
+The headline and list are one block, as wide as its longest line and centred. Its middle sits at 41% of the window's height, the middle of the sky above the hills, and never closer than 112px to the top. A small script in `index.html` measures the block's height for that. All of these values are custom properties at the top of `homepage.css`.
+
+With `?tune`, the **Homepage** panel has sliders for every size, line height, tracking and gap, the block's centre and the name's position, plus a folder per part (name, headline, years and places, roles) for its colour and font, and copy for the name and headline. Its slider defaults are read from `homepage.css`, and its values are saved under `grass-website-homepage-v4`.
 
 ## Tune panel (`?tune`)
 
