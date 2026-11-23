@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    { "source": "/verdigris-ai", "destination": "https://aashikaashok.com/verdigris-ai" },
+    { "source": "/soundtransit-search", "destination": "https://aashikaashok.com/soundtransit-search" },
+    { "source": "/e-commerce-product-creation", "destination": "https://aashikaashok.com/e-commerce-product-creation" }
+  ],
+  "headers": [
+    {
+      "source": "/(verdigris-ai|soundtransit-search|e-commerce-product-creation)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    }
+  ]
+}

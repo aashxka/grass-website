@@ -155,14 +155,90 @@
   .work-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 16px; }
   .work-caption p { margin: 0; font-size: 15px; color: #1b1b1b; }
   .work-caption h2 { flex: none; margin: 0; font: 400 13px/1.4 "Necto Mono", monospace; text-transform: uppercase; color: #5A616E; }
-  #project-sheet { pointer-events: auto; position: fixed; inset: 0; --return-edge: 44px; left: var(--return-edge); width: calc(100% - var(--return-edge) - 12px); height: calc(100% - 24px); max-width: none; max-height: none; margin: auto; border: 0; border-radius: 8px; padding: 0; overflow: visible; color: #242424; background: white; }
-  #project-sheet[open] { display: flex; flex-direction: column; }
-  #project-sheet::backdrop { background: #18181830; backdrop-filter: blur(12px); }
+  /* Case-study sheet: the Framer homepage's sheet, value for value (project-sheet.js drives it).
+     The 16px gap around the sheet is one close button; hovering it brings the back chip and the peek. */
+  #project-sheet {
+    --sheet-radius: 8px;
+    --sheet-shadow: 0px 16px 47px 4px rgba(0, 0, 0, 0.2);
+    --sheet-peek-shadow: 0px 12px 52px 0px rgba(0, 0, 0, 0.18);
+    --sheet-peek-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --sheet-blur-ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --back-ink: #302923;
+    position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none;
+    margin: 0; padding: 0; border: 0; overflow: hidden; background: transparent; color: #1b1b1b;
+    pointer-events: auto;
+  }
+  #project-sheet::backdrop { background: transparent; }
   html:has(#project-sheet[open]) { overflow: hidden; }
-  .sheet-return { position: absolute; inset: 0 100% 0 auto; width: var(--return-edge); border: 0; padding: 0; background: transparent; color: #302923; cursor: pointer; }
-  .sheet-return span { position: absolute; top: var(--return-y, 16%); left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 36px; height: 36px; background: white; border-radius: 8px; box-shadow: 0 2px 10px #0002; }
-  .sheet-return svg { width: 18px; height: 18px; }
-  #project-sheet iframe, #project-sheet img { width: 100%; flex: 1; min-height: 0; object-fit: contain; border: 0; border-radius: inherit; }
+  /* The page behind blurs in with the sheet and comes back into focus while the back chip shows. */
+  .sheet-blur {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0;
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    transition: opacity 0.2s var(--sheet-blur-ease);
+  }
+  #project-sheet[data-blurred] .sheet-blur { opacity: 1; transition-duration: 0.32s; }
+  .sheet-strip {
+    position: absolute; inset: 0; z-index: 0; margin: 0; padding: 0; border: 0;
+    appearance: none; background: transparent; cursor: pointer;
+  }
+  .sheet-strip:focus-visible { outline: 2px solid var(--back-ink); outline-offset: -8px; }
+  #project-sheet[data-closing] .sheet-strip { pointer-events: none; }
+  .sheet-box {
+    position: absolute; inset: var(--sheet-margin, 16px); z-index: 1; pointer-events: none;
+    transition: transform 0.2s var(--sheet-peek-ease);
+  }
+  .sheet-panel {
+    position: absolute; inset: 0; overflow: hidden; outline: none; opacity: 0;
+    border-radius: var(--sheet-radius); background: var(--page-color, #ffffff);
+    box-shadow: var(--sheet-shadow); pointer-events: auto;
+    transition: box-shadow 0.2s var(--sheet-peek-ease), background-color 0.24s ease;
+  }
+  #project-sheet[data-peek] .sheet-panel { box-shadow: var(--sheet-peek-shadow); }
+  #project-sheet[data-closing] .sheet-panel { pointer-events: none; }
+  /* a hairline of light along the top-left edge, as on the Framer sheet */
+  .sheet-panel::after {
+    content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
+    box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.9);
+  }
+  .sheet-content { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; clip-path: inset(0 round var(--sheet-radius)); }
+  .sheet-content iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; color-scheme: normal; }
+  #project-sheet:not([data-ready]) .sheet-content iframe { pointer-events: none; }
+  .sheet-content img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .sheet-error {
+    position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px;
+    padding: 24px; background: #ffffff; color: #1b1b1b; font-size: 15px; text-align: center;
+  }
+  .sheet-error p { margin: 0; }
+  .sheet-error a, .sheet-error button {
+    font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #1b1b1b55;
+  }
+  .sheet-error a:focus-visible, .sheet-error button:focus-visible { outline: 2px solid var(--back-ink); outline-offset: 4px; border-radius: 2px; }
+  /* Back chip: the side nav's icon tile. It follows the pointer through the gap (the cursor hides there);
+     on touch screens it rests in the middle of the top gap and takes taps. */
+  .sheet-chip { position: fixed; left: 0; top: 0; z-index: 3; width: 40px; height: 40px; pointer-events: none; will-change: transform; }
+  .sheet-chip > span {
+    display: grid; place-items: center; width: 100%; height: 100%; border-radius: 8px;
+    background: #ffffff; color: var(--back-ink);
+    box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.08), 0px 6px 8px 0px rgba(0, 0, 0, 0.06);
+    opacity: 0; scale: 0.6;
+    transition: opacity var(--chip-time, 0.3s) var(--chip-ease, ease), scale var(--chip-time, 0.3s) var(--chip-ease, ease);
+  }
+  #project-sheet[data-chip] .sheet-chip > span { opacity: 1; scale: 1; }
+  #project-sheet[data-chip][data-pressed] .sheet-chip > span { scale: 0.9; }
+  .sheet-chip svg { width: 16px; height: 16px; transition: rotate var(--turn-time, 0.4s) var(--turn-ease, ease); }
+  @media (hover: hover) and (pointer: fine) {
+    .sheet-strip { cursor: none; }
+  }
+  @media (hover: none), (pointer: coarse) {
+    #project-sheet[data-chip] .sheet-chip { pointer-events: auto; cursor: pointer; }
+  }
+  @media (max-width: 809.98px) {
+    .sheet-chip svg { rotate: 90deg; } /* on phones the arrow points up, toward the gap it closes into */
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-blur, .sheet-box, .sheet-chip > span, .sheet-chip svg { transition: none; }
+  }
 
   @media (max-width: 600px) {
     .work-rail { grid-auto-columns: 82vw; }
@@ -254,9 +330,16 @@
 </section>
 </main>
 <dialog id="project-sheet" aria-label="Case study">
-  <button class="sheet-return" type="button" aria-label="Close case study" autofocus><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16h10a6 6 0 0 0 0-12h-3M9 12l-4 4 4 4"/></svg></span></button>
+  <div class="sheet-blur" aria-hidden="true"></div>
+  <button class="sheet-strip" type="button" aria-label="Close case study"></button>
+  <div class="sheet-box">
+    <div class="sheet-panel" tabindex="-1" autofocus>
+      <div class="sheet-content"></div>
+    </div>
+  </div>
+  <div class="sheet-chip" aria-hidden="true"><span><svg viewBox="0 0 32 32" fill="none"><path d="M16 7.5Q21.5 6 25 7.5q3 1.5 2.5 7-.5 5.5-3 7T16.5 23Q11 22.5 5.5 22.5M11.5 16.5l-6 6 6 6" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
 </dialog>
-<script type="module" src="project-sheet.js?v=edge-return"></script>
+<script type="module" src="project-sheet.js?v=card-morph"></script>
 </div>
 <script type="module" src="page-scroll.js?v=feedback"></script>
 <script type="module">

@@ -75,6 +75,12 @@ Panel values are saved in your browser (`localStorage` key `grass-website-tune`)
 
 DialKit 2.1.0's plain-JavaScript build is vendored in `vendor/dialkit/` (MIT, Josh Puckett); `tune.js` builds the panel and drives the scene through a small API that `index.html` hands it.
 
+## Case-study sheet
+
+`project-sheet.js` opens the Work cards the way the Framer homepage does (a port of `PageProjectInteractions.tsx`, values unchanged). The sheet grows out of the clicked card and closes back into it. It sits 16px from every edge. That gap is the close button: hovering it shows the back chip, slides the sheet 24px away from that edge and clears the blur behind. Esc, Back and the case study's own home link close it, and Forward reopens it.
+
+The case studies are the live Framer pages. `vercel.json` proxies `/verdigris-ai`, `/soundtransit-search` and `/e-commerce-product-creation` from aashikaashok.com onto this origin (marked `noindex`), so the sheet can reach into them: it hides their floating nav, waits for their fonts and swaps projects in place. A direct visit to one of those paths is sent to `/?case-study=…` by the Framer page and opens here over Work. Add a project by adding its card and its path to both files.
+
 ## URL parameters
 
 Any setting can be overridden for testing, for example `?len=0.8&deskX=1.5`. Passing `wind` or `gust` turns the live Seattle wind off, and so does `?seattle=0`. `?t=3&paused=1` freezes a frame. `?debug=1` shows the frame rate, the canvas size and the current Seattle reading.
