@@ -53,7 +53,9 @@ async function dismiss() {
   sheet.dataset.closing = "true";
   await closeSheet();
   delete sheet.dataset.closing;
-  if (history.state?.projectIndex != null) history.back();
+  const state = { ...history.state };
+  delete state.projectIndex;
+  history.replaceState(state, "", "#work");
 }
 back.addEventListener("click", dismiss);
 sheet.addEventListener("cancel", event => { event.preventDefault(); dismiss(); });
