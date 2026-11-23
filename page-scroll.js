@@ -52,9 +52,9 @@ function selectLink(animate) {
 function paint() {
   pendingPaint = 0;
   const y = window.scrollY;
-  const progress = clampProgress((y - introEnd) / Math.max(1, workTop - introEnd));
-  const drop = smooth(progress);
-  const workReveal = smooth(clampProgress((progress - 0.5) * 2));
+  const progress = clampProgress(y / Math.max(1, workTop));
+  const drop = smooth(clampProgress((progress - 0.06) / 0.94));
+  const workReveal = smooth(clampProgress((progress - 0.10) / 0.90));
   const reduced = reducedMotion.matches;
   landscape.style.setProperty("--landscape-drop", (reduced ? 0 : drop * grassDrop) + "px");
   landscape.style.setProperty("--landscape-opacity", 1 - smooth(clampProgress((progress - 0.3) / 0.7)));
