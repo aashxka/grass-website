@@ -95,6 +95,16 @@ export async function mountHomepageTune() {
   const config = Object.fromEntries(sliders.map(([label, , value, min, max]) => [
     label, [value, min, max, 1],
   ]));
+  const heading = intro.querySelector("h1");
+  const paragraphs = [...intro.querySelectorAll(":scope > p")];
+  config["Heading text"] = { type: "text", default: heading.textContent };
+  paragraphs.forEach((paragraph, index) => {
+    config["Paragraph " + (index + 1)] = { type: "text", default: paragraph.textContent };
+  });
+  config["Body size (px)"] = [16, 10, 64, 1];
+  config["Body colour"] = { type: "color", default: "#5f5f5f" };
+  config["Body font"] = select(["Stevie Sans Book", "Outfit", "Bricolage Grotesque", "Use heading font", "Other installed font"], "Stevie Sans Book");
+  config["Installed body font name"] = { type: "text", default: "", placeholder: "e.g. Georgia" };
   config["Heading font"] = select(
     ["Outfit", "Stevie Sans Book", "Bricolage Grotesque", "Google Font", "Desktop font"],
     "Outfit",
@@ -165,6 +175,18 @@ export async function mountHomepageTune() {
       else homepage.style.setProperty(property, value + unit);
     }
     applyHeadingFont(values);
+    heading.textContent = values["Heading text"];
+    const bodyFont = values["Body font"] === "Other installed font"
+      ? values["Installed body font name"].trim() || "Stevie Sans Book"
+      : values["Body font"];
+    paragraphs.forEach((paragraph, index) => {
+      paragraph.textContent = values["Paragraph " + (index + 1)];
+      paragraph.style.fontSize = values["Body size (px)"] + "px";
+      paragraph.style.color = values["Body colour"];
+      paragraph.style.fontFamily = bodyFont === "Use heading font"
+        ? 'var(--heading-font), sans-serif'
+        : CSS.escape(bodyFont) + ", sans-serif";
+    });
     intro.dataset.position = values["Intro position"].toLowerCase().replace(" ", "-");
     intro.dataset.textAlign = values["Text alignment"].toLowerCase();
     nav.dataset.align = values["Nav alignment"].toLowerCase();
