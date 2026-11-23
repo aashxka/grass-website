@@ -23,13 +23,13 @@
 
 /* Home, from her mock: the name top left, 24px from both edges, and one block centred on the sky:
    a Season Mix headline over a list of years, places and roles. Every size and gap is a dial in ?tune.
-   The mock's type sits at name 15 : list 15 : headline 30 (Season Mix Light). */
+   The mock's type sits at name 14 : list 15 : headline 30 (Season Mix Light); her ?tune values, 2026-11-23. */
 .homepage {
   --ink: #1b1b1b;
   --ink-50: rgb(27 27 27 / 50%);
   --page-edge: 24px;
   --page-top: calc(24px + env(safe-area-inset-top, 0px));
-  --name-size: 15px;
+  --name-size: 14px;
   --name-top: 24px;
   --name-left: 24px;
   --headline-size: 30px;
@@ -37,11 +37,11 @@
   --headline-tracking: 0em;
   --list-size: 15px;
   --list-leading: 1.5;
-  --list-gap: 43px;          /* headline → list */
-  --row-gap: 15px;
-  --label-gap: 16px;         /* year → place */
+  --list-gap: 48px;          /* headline → list */
+  --row-gap: 16px;
+  --label-gap: 8px;          /* year → place */
   --column-gap: 24px;        /* longest place → role */
-  --block-centre: 41;        /* % of the window's height, the middle of the sky above the hills */
+  --block-centre: 40;        /* % of the window's height, the middle of the sky above the hills */
   --block-min-top: 112px;
   position: relative;
   z-index: 6;
@@ -91,11 +91,10 @@
   right: auto;
   left: calc(var(--name-left) + env(safe-area-inset-left, 0px));
   margin: 0;
-  font-family: var(--intro-font, "Necto Mono"), ui-monospace, monospace;
+  font-family: var(--intro-font, "Stevie Sans Book"), system-ui, sans-serif;
   font-size: var(--name-size);
   font-weight: 400;
-  letter-spacing: 0;
-  text-transform: uppercase;
+  letter-spacing: 0;   /* the name shows exactly as typed, no forced capitals */
 }
 
 .homepage .intro-name .nav-thumb {

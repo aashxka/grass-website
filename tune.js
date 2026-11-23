@@ -51,7 +51,7 @@ const layerLabel = name => name.replaceAll("-", " ");
 // any CSS colour the picker hands back -> #rrggbb for the shaders
 const swatch = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
 function toHex(c) {
-  if (/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
+  if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(c)) return c.slice(0, 7).toLowerCase();   // #rrggbbaa: keep rgb exact
   swatch.clearRect(0, 0, 1, 1); swatch.fillStyle = "#000"; swatch.fillStyle = c; swatch.fillRect(0, 0, 1, 1);
   const [r, g, b] = swatch.getImageData(0, 0, 1, 1).data;
   return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
@@ -238,7 +238,7 @@ export async function mountHomepageTune() {
   };
   const headline = homepage.querySelector(".intro-headline");
   const parts = [
-    { name: "Name", element: homepage.querySelector(".intro-name"), colourProperty: "--name-ink", font: "Necto Mono", colour: "#1b1b1b", copy: nameCopy },
+    { name: "Name", element: homepage.querySelector(".intro-name"), colourProperty: "--name-ink", font: "Stevie Sans Book", colour: "#1b1b1b", copy: nameCopy },
     { name: "Headline", element: headline, font: "Season Mix", colour: "#1b1b1b",
       copy: { get: () => headline.textContent, set: value => { headline.textContent = value; } } },
     { name: "Years & places", element: list, property: "--label-font", colourProperty: "--ink-50", font: "Stevie Sans Book", colour: "#1b1b1b80" },
@@ -306,7 +306,7 @@ export async function mountHomepageTune() {
  *   Replay        bounces the first cover in and back out
  * The spring is sampled into a CSS linear() curve with the same maths as the shipped default, and every
  * value lands as a custom property on .work-rail (index.html keeps the defaults). */
-const CARD_HOVER = { stiffness: 219.3, damping: 12.5, mass: 1, lift: 1.025, y: 15, x: 0, blur: 17, opacity: 0.2, colour: "#000000" };
+const CARD_HOVER = { stiffness: 151, damping: 21, mass: 1.1, lift: 1.025, y: 15, x: 0, blur: 8, opacity: 0.1, colour: "#1b1b1b6e" };   // her ?tune values, 2026-11-23
 
 function springEasing(spring) {
   let { stiffness, damping, mass = 1 } = spring;

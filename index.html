@@ -153,15 +153,15 @@
   .work-rail:focus-visible { outline: 2px solid #1b1b1b; outline-offset: -2px; }
   .work-card { min-width: 0; scroll-snap-align: start; color: inherit; text-decoration: none; }
   .work-card-cover { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; }
-  /* Hover, as on molly.studio's project cards: the cover alone (not the caption) springs up 2.5% and casts a
-     soft shadow, overshooting a touch and settling, and springs back the same way. The curve is a damped
-     spring (stiffness 219.3, damping 12.5, mass 1; ζ ≈ 0.42) sampled into linear() until it settles. The
-     ?tune "Card hover" panel retunes all of these live by overriding them on the rail. */
+  /* Hover: the cover alone (not the caption) springs up 2.5% and casts a soft shadow, and springs back
+     the same way. Her ?tune values (2026-11-23): a damped spring (stiffness 151, damping 21, mass 1.1;
+     ζ ≈ 0.81, a 1% overshoot) sampled into linear() until it settles, and a 0 15px 8px shadow at 10% ink.
+     The ?tune "Card hover" panel retunes all of these live by overriding them on the rail. */
   .work-rail {
-    --cover-spring: linear(0, 0.0184, 0.0691, 0.1453, 0.2405, 0.3482, 0.4627, 0.5789, 0.6923, 0.7993, 0.897, 0.9835, 1.0572, 1.1176, 1.1645, 1.1984, 1.2199, 1.2302, 1.2308, 1.2229, 1.2083, 1.1885, 1.165, 1.1392, 1.1124, 1.0856, 1.0599, 1.036, 1.0145, 0.9958, 0.9801, 0.9675, 0.958, 0.9515, 0.9477, 0.9464, 0.9471, 0.9497, 0.9537, 0.9587, 0.9644, 0.9705, 0.9768, 0.9829, 0.9887, 0.994, 0.9987, 1.0027, 1.006, 1.0086, 1.0105, 1.0117, 1.0123, 1.0124, 1.012, 1.0113, 1.0102, 1.009, 1.0076, 1.0062, 1);
-    --cover-time: 800ms;
+    --cover-spring: linear(0, 0.0067, 0.0251, 0.0528, 0.088, 0.1287, 0.1735, 0.2211, 0.2704, 0.3204, 0.3704, 0.4197, 0.4678, 0.5143, 0.5588, 0.6012, 0.6413, 0.6789, 0.714, 0.7466, 0.7768, 0.8044, 0.8298, 0.8528, 0.8737, 0.8925, 0.9094, 0.9245, 0.9379, 0.9497, 0.9601, 0.9691, 0.977, 0.9838, 0.9895, 0.9944, 0.9985, 1.0019, 1.0047, 1.0069, 1.0086, 1.01, 1.0109, 1.0116, 1.0119, 1.0121, 1.0121, 1.0119, 1.0116, 1.0112, 1.0107, 1.0102, 1.0096, 1.009, 1.0084, 1.0078, 1.0072, 1.0066, 1.0061, 1.0055, 1);
+    --cover-time: 612ms;
     --cover-lift: 1.025;
-    --cover-shadow: rgba(0, 0, 0, 0.2) 0px 15px 17px;
+    --cover-shadow: rgba(27, 27, 27, 0.1) 0px 15px 8px;
   }
   .work-card-cover {
     filter: drop-shadow(rgba(0, 0, 0, 0) 0px 0px 0px);
