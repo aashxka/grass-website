@@ -135,11 +135,14 @@ function visibleBox(element) {
 }
 
 // The chip's pop and the arrow's turn ride CSS transitions; hand them the springs as linear() curves.
-for (const [name, spec] of [["chip", CHIP_SPRING], ["turn", TURN_SPRING]]) {
-  const { duration, easing } = springCurve(spec);
-  sheet.style.setProperty(`--${name}-time`, `${Math.round(duration)}ms`);
-  sheet.style.setProperty(`--${name}-ease`, easing);
+function applyControlSprings(chipSpring, turnSpring) {
+  for (const [name, spec] of [["chip", chipSpring], ["turn", turnSpring]]) {
+    const { duration, easing } = springCurve(spec);
+    sheet.style.setProperty(`--${name}-time`, `${Math.round(duration)}ms`);
+    sheet.style.setProperty(`--${name}-ease`, easing);
+  }
 }
+applyControlSprings(CHIP_SPRING, TURN_SPRING);
 sheet.style.setProperty("--sheet-margin", SHEET.margin + "px");
 
 /* ── Card press ─────────────────────────────────────────────────────────────────────────── */
@@ -832,3 +835,81 @@ addEventListener("DOMContentLoaded", () => requestAnimationFrame(() => requestAn
   }
 })));
 
+
+if (new URLSearchParams(location.search).has("tune") && new URLSearchParams(location.search).get("tune") !== "0") {
+  import("./vendor/dialkit/index.js").then(({ createDialKit }) => {
+    const ms = value => [value, 0, 1200, 5];
+    const percent = value => [Math.round(value * 100), 0, 100, 1];
+    const spring = spec => ({ type: "spring", ...spec });
+    const m = SHEET_MORPH;
+    const motion = createDialKit("Project sheet", {
+      Open: {
+        Spring: spring(m.open),
+        "Sheet fade (ms)": ms(m.surfaceIn),
+        "Content starts (%)": percent(m.contentAt),
+        "Content fade (ms)": ms(m.contentIn),
+        "Centered fade (ms)": ms(m.zoomIn),
+        "Backdrop fade (ms)": ms(320),
+      },
+      Close: {
+        Spring: spring(m.close),
+        "Content fade (ms)": ms(m.contentOut),
+        "Fade starts (%)": percent(m.dissolveFrom),
+        "Fade ends (%)": percent(m.dissolveTo),
+        "Centered fade ends (%)": percent(m.zoomOut),
+        "Backdrop fade (ms)": ms(200),
+      },
+      Press: { "Down (ms)": ms(m.pressIn), "Release (ms)": ms(m.pressOut) },
+      Edge: { "Back chip": spring(CHIP_SPRING), "Phone arrow": spring(TURN_SPRING), "Peek (ms)": ms(200) },
+    }, { id: "project-sheet-motion", persist: { key: "portfolio-project-sheet-motion" } });
+
+    function applyMotion({ Open, Close, Press, Edge }) {
+      Object.assign(m, {
+        open: Open.Spring, close: Close.Spring, surfaceIn: Open["Sheet fade (ms)"],
+        contentAt: Open["Content starts (%)"] / 100, contentIn: Open["Content fade (ms)"],
+        zoomIn: Open["Centered fade (ms)"], contentOut: Close["Content fade (ms)"],
+        dissolveFrom: Close["Fade starts (%)"] / 100, dissolveTo: Close["Fade ends (%)"] / 100,
+        zoomOut: Close["Centered fade ends (%)"] / 100,
+        pressIn: Press["Down (ms)"], pressOut: Press["Release (ms)"],
+      });
+      applyControlSprings(Edge["Back chip"], Edge["Phone arrow"]);
+      sheet.style.setProperty("--tune-backdrop-in", Open["Backdrop fade (ms)"] + "ms");
+      sheet.style.setProperty("--tune-backdrop-out", Close["Backdrop fade (ms)"] + "ms");
+      sheet.style.setProperty("--tune-peek", Edge["Peek (ms)"] + "ms");
+    }
+    const style = document.createElement("style");
+    style.textContent = `
+      @media (prefers-reduced-motion: no-preference) {
+        #project-sheet .sheet-blur { transition-duration: var(--tune-backdrop-out); }
+        #project-sheet[data-blurred] .sheet-blur { transition-duration: var(--tune-backdrop-in); }
+        #project-sheet .sheet-box { transition-duration: var(--tune-peek); }
+      }
+      .work-caption { flex-wrap: wrap; }
+      .work-caption h2 { max-width: 100%; }
+    `;
+    document.head.append(style);
+    motion.subscribe(applyMotion);
+    applyMotion(motion.getValues());
+
+    const typeGroup = (size, color) => ({
+      "Size (px)": [size, 10, 48, 1],
+      Weight: [400, 100, 900, 100],
+      Color: { type: "color", default: color },
+    });
+    const type = createDialKit("Project card type", {
+      Description: typeGroup(15, "#1b1b1b"),
+      "Project and year": typeGroup(13, "#5a616e"),
+    }, { id: "project-card-type", persist: { key: "portfolio-project-card-type" } });
+    function applyType(values) {
+      for (const [selector, settings] of [["p", values.Description], ["h2", values["Project and year"]]]) {
+        for (const label of rail.querySelectorAll(".work-caption " + selector)) {
+          label.style.fontSize = settings["Size (px)"] + "px";
+          label.style.fontWeight = settings.Weight;
+          label.style.color = settings.Color;
+        }
+      }
+    }
+    type.subscribe(applyType);
+    applyType(type.getValues());
+  });
+}
