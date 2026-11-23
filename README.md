@@ -87,16 +87,14 @@ DialKit 2.1.0's plain-JavaScript build is vendored in `vendor/dialkit/` (MIT, Jo
 
 ## Sounds
 
-`sounds.js` gives everything clickable a sound, using [Cuelume](https://github.com/danielwh2/cuelume) 0.2.8's mech theme (MIT, Daniel Belyi, vendored in `vendor/cuelume/` and mapped as `cuelume` in the import map). The sounds are synthesised live with Web Audio, so there are no audio files.
+`sounds.js` uses vendored Cuelume 0.2.8 (MIT) to synthesize interaction sounds:
 
-| Moment | Cue |
-| --- | --- |
-| Mouse lands on a clickable thing (nav, name, Work cards, the sheet's close gap, the ball) | `select`: a detent that rises toward later siblings and falls toward earlier ones; at most one every 50 ms |
-| Pressing anything clickable | `toggle`: one snap |
-| Pressing the ball | `navigate` in the bubble theme |
-| Going back from a case study (close gap, back chip, "Go back") | `close` |
+- Hover: `tap` in the press theme, except on the ball and case-study back controls.
+- Press: `toggle` in the mech theme; the ball plays bubble `navigate`.
+- Back controls play bubble `close` only on click.
+- Active/current and selected items stay silent.
 
-A mouse sounds on press-down; touch, pen and Enter/Space sound on the click itself, so a scroll that starts on a card stays silent. Hover is mouse-only and stays quiet until the visitor's first click or key press, since browsers block sound before then. It also stays quiet when the page moves under a still pointer (scrolling, the sheet growing). Only the homepage and the ball are covered: the case studies inside the sheet, and the `?tune` and `?annotate` panels, have no sounds.
+Hover starts after the first user interaction and is limited during rapid sweeps. Touch and keyboard activation play on click.
 
 ## Case-study sheet
 

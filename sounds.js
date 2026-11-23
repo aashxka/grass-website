@@ -1,7 +1,4 @@
-// Interface sounds (Cuelume, mech theme, vendor/cuelume/): every clickable thing on the page gets
-// a ratchet detent when a mouse lands on it and a switch snapping over when it's pressed.
-// Two presses sound different: throwing the ball (bubble navigate) and backing out of a case study (mech close).
-// Synthesised live with Web Audio, no audio files.
+// Hover: press tap. Press: mech toggle; ball: bubble navigate; back: bubble close on click.
 import { play, setTheme, unlock } from "cuelume";
 
 setTheme("mech");
@@ -11,17 +8,17 @@ const BALL = "#stage button";                                    // fetch.js: th
 const SHEET_BACK = ".sheet-strip, .sheet-chip, .sheet-error button"; // project-sheet.js: gap, back chip, "Go back"
 const scope = document.querySelector(".homepage");
 const finePointer = matchMedia("(hover: hover) and (pointer: fine)");
-const HOVER_GAP = 50; // ms between detents, so a fast sweep across the nav stays a ratchet, not a buzz
+const HOVER_GAP = 50; // Limit rapid hover sounds.
 
 const clickableAt = node => {
   const el = node instanceof Element ? node.closest(CLICKABLE) : null;
-  if (!el || !(scope?.contains(el) || el.matches(BALL)) || el.matches(":disabled, [aria-disabled='true']")) return null;
+  if (!el || !(scope?.contains(el) || el.matches(BALL)) || el.matches(":disabled, [aria-disabled='true'], [aria-current]:not([aria-current='false']), [aria-selected='true'], :checked")) return null;
   return el;
 };
 
 const playPress = el => {
   if (el.matches(BALL)) play("navigate", { theme: "bubble" });
-  else if (el.matches(SHEET_BACK)) play("close");
+  else if (el.matches(SHEET_BACK)) play("close", { theme: "bubble" });
   else play("toggle");
 };
 
@@ -37,18 +34,11 @@ const startAudio = () => {
 addEventListener("pointerdown", startAudio, true);
 addEventListener("keydown", startAudio, true);
 
-/* ── Hover: select ── */
+/* ── Hover: press tap ── */
 
 let hovered = null;    // the clickable under the pointer now
-let lastSounded = null;
 let lastSoundAt = 0;
 let pointer = { x: NaN, y: NaN };
-
-// A later sibling (next nav pill, next card) clicks a touch higher, an earlier one a touch lower.
-const directionFrom = (prev, next) => {
-  if (!prev || prev.parentElement !== next.parentElement) return undefined;
-  return prev.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING ? "forward" : "back";
-};
 
 addEventListener("pointerover", event => {
   if (event.pointerType !== "mouse") return;
@@ -58,11 +48,10 @@ addEventListener("pointerover", event => {
   pointer = { x: event.clientX, y: event.clientY };
   if (target === hovered) return;
   hovered = target;
-  if (!target || !moved || !finePointer.matches || !audioAllowed()) return;
+  if (!target || target.matches(`${BALL}, ${SHEET_BACK}`) || !moved || !finePointer.matches || !audioAllowed()) return;
   const now = performance.now();
   if (now - lastSoundAt < HOVER_GAP) return;
-  play("select", { direction: directionFrom(lastSounded, target) });
-  lastSounded = target;
+  play("tap", { theme: "press" });
   lastSoundAt = now;
 }, true);
 addEventListener("pointermove", event => {
@@ -81,7 +70,7 @@ addEventListener("pointerdown", event => {
   pressed = null;
   if (event.pointerType !== "mouse" || event.button !== 0) return;
   const target = clickableAt(event.target);
-  if (!target) return;
+  if (!target || target.matches(SHEET_BACK)) return;
   pressed = target;
   playPress(target);
 }, true);
