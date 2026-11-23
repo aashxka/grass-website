@@ -303,8 +303,25 @@ function showLoadError() {
   content.append(error);
 }
 
+function heroDestination(frame) {
+  let doc;
+  try { doc = frame?.contentDocument; } catch { return null; }
+  if (!doc || !frame.offsetWidth) return null;
+  const scale = content.clientWidth / frame.offsetWidth;
+  const candidates = [...doc.querySelectorAll("img,[data-image-slot]")]
+    .map(element => ({ element, rect: element.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width * scale > Math.min(160, content.clientWidth / 2)
+      && rect.height * scale > 60 && rect.top >= -2 && rect.top * scale < content.clientHeight);
+  const asset = openingHero.src.split("?")[0].split("/").pop();
+  const target = candidates.find(({ element }) => element.currentSrc?.includes(asset))
+    ?? candidates.sort((a, b) => a.rect.top - b.rect.top)[0];
+  if (!target) return null;
+  const { left, top, width, height } = target.rect;
+  return { left: left * scale, top: top * scale, width: width * scale, height: height * scale };
+}
+
 function reveal() {
-  if (!entry || ready) return;
+  if (!entry || closing || ready) return;
   ready = true;
   sync();
   const frame = content.querySelector("iframe");
@@ -317,6 +334,20 @@ function reveal() {
   if (!reduced.matches && typeof content.animate === "function") {
     if (openingHero) {
       const hero = openingHero;
+      const target = heroDestination(frame);
+      if (target) {
+        const timing = springCurve(SHEET_MORPH.open);
+        const dx = target.left - parseFloat(hero.style.left);
+        const dy = target.top - parseFloat(hero.style.top);
+        const sx = target.width / parseFloat(hero.style.width);
+        const sy = target.height / parseFloat(hero.style.height);
+        hero.animate([{ transform: "none" }, {
+          transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
+        }], { ...timing, fill: "forwards" });
+        pageAt = performance.now() + timing.duration;
+      }
+      openingHero = null;
+      hero.dataset.transitionHero = "";
       hero.animate([{ opacity: 1 }, { opacity: 0 }], {
         duration: SHEET_MORPH.contentIn, delay: Math.max(0, pageAt - performance.now()), fill: "forwards"
       }).onfinish = () => hero.remove();
@@ -554,24 +585,16 @@ function grow() {
   } else {
     if (fromCard) {
       const curve = springCurve(SHEET_MORPH.open);
-      const scale = Math.min(to.width * 0.92 / from.width, to.height * 0.88 / from.height);
-      const width = from.width * scale;
-      const height = from.height * scale;
-      const left = (to.width - width) / 2;
-      const top = (to.height - height) / 2;
       openingHero = document.createElement("img");
       openingHero.src = cover.currentSrc || cover.src;
       openingHero.alt = "";
       Object.assign(openingHero.style, {
         position: "absolute", pointerEvents: "none", objectFit: "cover",
         borderRadius: getComputedStyle(cover).borderRadius, transformOrigin: "0 0",
-        left: left + "px", top: top + "px", width: width + "px", height: height + "px",
+        left: from.left - to.left + "px", top: from.top - to.top + "px",
+        width: from.width + "px", height: from.height + "px",
       });
       box.append(openingHero);
-      openingHero.animate([
-        { transform: `translate(${from.left - to.left - left}px, ${from.top - to.top - top}px) scale(${1 / scale})` },
-        { transform: "none" }
-      ], curve);
       neighborAnimations = cards.flatMap((card, index) => {
         if (card === entry.card || !visibleBox(card)) return [];
         const distance = index < entry.index ? -from.left : innerWidth - from.right;
@@ -636,6 +659,7 @@ function closeSheet() {
   if (!entry) return Promise.resolve();
   if (closing) return closed;
   closing = true;
+  box.querySelector("[data-transition-hero]")?.remove();
   openingHero?.remove();
   neighborAnimations.forEach(animation => animation.reverse());
   let done;
@@ -727,6 +751,7 @@ function finishClose() {
   stopClosing = () => {};
   neighborAnimations.forEach(animation => animation.cancel());
   neighborAnimations = [];
+  box.querySelector("[data-transition-hero]")?.remove();
   openingHero?.remove();
   openingHero = null;
   entry = null;
