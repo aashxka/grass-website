@@ -1,7 +1,7 @@
 const sheet = document.querySelector("#project-sheet");
 const cards = [...document.querySelectorAll(".work-card")];
 const back = sheet.querySelector("button");
-const original = sheet.querySelector("a");
+
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 let activeCard;
 let motion;
@@ -16,7 +16,7 @@ function openSheet(card) {
   if (preview) content.alt = title;
   else content.title = title;
   content.src = card.href;
-  original.href = card.href;
+  back.style.removeProperty("--return-y");
   sheet.lastElementChild.matches("iframe,img") && sheet.lastElementChild.remove();
   sheet.append(content);
   sheet.showModal();
@@ -57,6 +57,11 @@ async function dismiss() {
   delete state.projectIndex;
   history.replaceState(state, "", "#work");
 }
+back.addEventListener("pointermove", event => {
+  if (event.pointerType !== "mouse") return;
+  const rect = back.getBoundingClientRect();
+  back.style.setProperty("--return-y", Math.max(18, Math.min(rect.height - 18, event.clientY - rect.top)) + "px");
+});
 back.addEventListener("click", dismiss);
 sheet.addEventListener("cancel", event => { event.preventDefault(); dismiss(); });
 sheet.addEventListener("keydown", event => event.stopPropagation());
