@@ -503,6 +503,10 @@ new ResizeObserver(fitPage).observe(content);
 
 function mountContent() {
   content.replaceChildren();
+  if (entry.about) {
+    content.append(document.querySelector("#about").content.cloneNode(true));
+    return;
+  }
   if (entry.study) {
     const frame = document.createElement("iframe");
     frame.title = entry.title;
@@ -518,7 +522,29 @@ function mountContent() {
 
 /* ── Open ───────────────────────────────────────────────────────────────────────────────── */
 
+const aboutLink = document.querySelector('#nav [href="#about"]');
+function genieFrames() {
+  const box = panel.getBoundingClientRect();
+  const button = aboutLink.getBoundingClientRect();
+  const origin = button.left + button.width / 2 - box.left;
+  return Array.from({ length: 21 }, (_, step) => {
+    const t = step / 20;
+    const sides = [[], []];
+    const y0 = (button.bottom - box.top) * (1 - t);
+    for (let row = 0; row <= 16; row++) {
+      const v = row / 16;
+      const bloom = Math.min(1, t ** (1.7 - v));
+      const y = y0 + v * box.height * t;
+      const left = (origin - button.width / 2) * (1 - bloom);
+      const right = box.width * bloom + (origin + button.width / 2) * (1 - bloom);
+      sides[0].push(left + "px " + y + "px");
+      sides[1].unshift(right + "px " + y + "px");
+    }
+    return { clipPath: "polygon(" + sides.flat().join(",") + ")" };
+  });
+}
 function entryFor(card, options = {}) {
+  if (card === aboutLink) return { card, about: true, title: "About Aashika", morph: !options.restored };
   const study = card.hasAttribute("data-study");
   return {
     card,
@@ -553,6 +579,16 @@ function openSheet(card, options = {}) {
   panel.focus({ preventScroll: true });
   restChip();
   sync();
+  strip.setAttribute("aria-label", entry.about ? "Close About" : "Close case study");
+  if (entry.about) {
+    panel.style.opacity = content.style.opacity = "1";
+    ready = fullyOpen = true;
+    if (entry.morph && !reduced.matches) {
+      growAnimation = panel.animate(genieFrames(), { duration: 460, easing: "ease-in-out" });
+    }
+    sync();
+    return;
+  }
   grow();
   load();
 }
@@ -637,6 +673,18 @@ function closeSheet() {
   let done;
   closed = new Promise(resolve => { done = resolve; });
   sync();
+
+  if (entry.about) {
+    if (reduced.matches) { finishClose(); done(); return closed; }
+    const progress = growAnimation?.playState === "running" ? growAnimation.currentTime : 460;
+    growAnimation?.cancel();
+    const exit = panel.animate(genieFrames(), { duration: 460, easing: "ease-in-out", fill: "both" });
+    exit.currentTime = progress;
+    exit.reverse();
+    stopClosing = done;
+    exit.onfinish = finishClose;
+    return closed;
+  }
 
   // Presentation values first: a close mid-open reverses from wherever the sheet is right now.
   const shownStyle = getComputedStyle(panel);
@@ -740,6 +788,14 @@ function finishClose() {
 // An explicit close (the gap, the chip, Esc, the page's own home link) stays on the current Work entry.
 async function dismiss() {
   if (!entry || closing) return;
+  if (entry.about) {
+    if (history.state?.aboutSheet) history.back();
+    else {
+      history.replaceState(null, "", location.pathname + location.search);
+      await closeSheet();
+    }
+    return;
+  }
   await closeSheet();
   if (history.state?.projectIndex == null) return;
   const state = { ...history.state };
@@ -750,6 +806,12 @@ async function dismiss() {
 
 /* ── Wiring ─────────────────────────────────────────────────────────────────────────────── */
 
+aboutLink.addEventListener("click", event => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  history.pushState({ aboutSheet: true }, "", "#about");
+  openSheet(aboutLink, { restored: event.detail === 0 });
+});
 for (const [index, card] of cards.entries()) {
   card.addEventListener("pointerdown", event => {
     if (event.button === 0) pressCard(card, true);
@@ -776,7 +838,7 @@ sheet.addEventListener("cancel", event => {
 });
 // The browser can force a modal shut (a second quick Escape); settle our state with it.
 sheet.addEventListener("close", () => {
-  if (!entry) return;
+  if (!entry || sheet.open) return;
   finishClose();
   if (history.state?.projectIndex == null) return;
   const state = { ...history.state };
@@ -787,7 +849,7 @@ sheet.addEventListener("close", () => {
 
 // Back closes the sheet into its card; Forward opens it again, scrolled where the reader left it.
 function restoreSheet({ restored = false } = {}) {
-  const card = cards[history.state?.projectIndex];
+  const card = location.hash === "#about" ? aboutLink : cards[history.state?.projectIndex];
   if (card) {
     if (!entry || entry.card !== card || closing) openSheet(card, { scroll: history.state.sheetScroll, restored });
   } else if (entry && !closing) {
@@ -815,3 +877,4 @@ addEventListener("DOMContentLoaded", () => requestAnimationFrame(() => requestAn
     restoreSheet({ restored: true }); // a reload with the sheet open
   }
 })));
+

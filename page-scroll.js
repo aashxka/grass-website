@@ -19,7 +19,7 @@ const intro = home.querySelector(".intro");
 const landscape = document.querySelector(".landscape");
 const work = document.getElementById("work");
 const workRail = work.querySelector(".work-rail");
-const about = document.getElementById("about");
+const aboutActive = () => location.hash === "#about";
 const sections = { home, work };
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const tuneControls = ".dialkit-root, .dialkit-version-overlay, [data-dialkit-ignore]";
@@ -45,7 +45,7 @@ function placeThumb(animate) {
 function selectLink(animate) {
   const hashLink = links.find(link => link.hash === location.hash);
   const onWork = workTop > 0 && window.scrollY >= workTop - 2;
-  const onAbout = about.open;
+  const onAbout = aboutActive();
   let next = onAbout ? aboutLink : onWork ? workLink : undefined;
   if (hashLink && hashLink !== workLink && hashLink !== aboutLink && !onAbout) next = hashLink;
   if (current === next) return;
@@ -164,7 +164,7 @@ const hasScrollEnd = "onscrollend" in document;
 
 function settleScroll() {
   clearTimeout(settleTimer);
-  if (about.open || !moved || destination !== null) return;
+  if (aboutActive() || !moved || destination !== null) return;
   moved = false;
   if (window.scrollY > 0 && window.scrollY < workTop) openFromNav(towardWork ? work : home);
 }
@@ -191,17 +191,18 @@ function interruptNavigation(event) {
 addEventListener("pointerdown", interruptNavigation, { passive: true });
 addEventListener("wheel", interruptNavigation, { passive: true });
 addEventListener("keydown", event => {
-  if (event.defaultPrevented || about.open) return;
+  if (event.defaultPrevented || aboutActive()) return;
   if (event.key === "Escape" && (location.hash === "#work" || window.scrollY > introEnd)) {
     openFromNav(home);
   } else if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) {
     stopAnimation();
   }
 });
+aboutLink.addEventListener("click", () => { stopAnimation(); schedulePaint(); });
 addEventListener("hashchange", () => selectLink(true));
 addEventListener("popstate", () => {
   selectLink(true);
-  if (about.open || location.hash === "#about") { syncAbout(); return; }
+  if (aboutActive() || document.querySelector("#project-sheet[open]")) return;
   const section = Object.hasOwn(sections, location.hash.slice(1)) ? sections[location.hash.slice(1)] : null;
   if (section || !location.hash) navigate(section || home, { animate: false });
 });
@@ -216,83 +217,10 @@ portfolioMotion.addEventListener("change", event => {
   measure();
 });
 
-const film = about.querySelector("video");
-let genie;
-function genieFrames() {
-  const box = about.getBoundingClientRect();
-  const button = aboutLink.getBoundingClientRect();
-  const origin = button.left + button.width / 2 - box.left;
-  return Array.from({ length: 21 }, (_, step) => {
-    const t = step / 20;
-    const sides = [[], []];
-    const y0 = (button.bottom - box.top) * (1 - t);
-    for (let row = 0; row <= 16; row++) {
-      const v = row / 16;
-      const bloom = Math.min(1, t ** (1.7 - v));
-      const y = y0 + v * box.height * t;
-      const left = (origin - button.width / 2) * (1 - bloom);
-      const right = box.width * bloom + (origin + button.width / 2) * (1 - bloom);
-      sides[0].push(left + "px " + y + "px");
-      sides[1].unshift(right + "px " + y + "px");
-    }
-    return { clipPath: "polygon(" + sides.flat().join(",") + ")" };
-  });
-}
-function syncAbout(animate = true) {
-  const show = location.hash === "#about";
-  if (show && !about.open) {
-    stopAnimation();
-    about.showModal();
-    about.scrollTop = 0;
-    film.play().catch(() => {});
-  }
-  if (!about.open) return;
-  const finish = () => {
-    if (location.hash !== "#about") {
-      film.pause();
-      about.close();
-      aboutLink.focus({ preventScroll: true });
-    }
-    genie?.cancel();
-    genie = null;
-    selectLink(true);
-  };
-  if (!animate || reducedMotion.matches) { finish(); return; }
-  if (!genie) {
-    genie = about.animate(genieFrames(), { duration: 460, easing: "ease-in-out", fill: "both" });
-    genie.currentTime = show ? 0 : 460;
-    genie.onfinish = finish;
-  }
-  genie.playbackRate = show ? 1 : -1;
-  genie.play();
-  selectLink(true);
-}
-aboutLink.addEventListener("click", event => {
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  event.preventDefault();
-  history.pushState({ aboutSheet: true }, "", "#about");
-  syncAbout(event.detail !== 0);
-});
-function dismissAbout() {
-  if (location.hash !== "#about") return;
-  if (history.state?.aboutSheet) history.back();
-  else {
-    history.replaceState(null, "", location.pathname + location.search);
-    syncAbout();
-  }
-}
-about.querySelector(".about-close").addEventListener("click", dismissAbout);
-about.addEventListener("cancel", event => { event.preventDefault(); dismissAbout(); });
-about.addEventListener("click", event => {
-  if (event.target !== about) return;
-  const r = about.getBoundingClientRect();
-  if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dismissAbout();
-});
-
 selectLink(false);
 measure();
 if (location.hash === "#work") navigate(work, { animate: false });
-if (location.hash === "#about") syncAbout(false);
+
 new ResizeObserver(measure).observe(intro);
 new ResizeObserver(measure).observe(home);
 new ResizeObserver(measure).observe(work);
@@ -305,3 +233,4 @@ Promise.race([font, new Promise(resolve => setTimeout(resolve, 1500))]).catch(()
   nav.classList.add("ready");
   nameNav.classList.add("ready");
 });
+
