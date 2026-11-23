@@ -10,7 +10,7 @@
 <link rel="preload" href="fonts/stevie-sans-book.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/season-mix-trial-regular.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="fonts/NectoMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="homepage.css?v=intro-32">
+<link rel="stylesheet" href="homepage.css?v=about">
 <script type="importmap">
 {
   "imports": {
@@ -336,6 +336,56 @@ human behavior and aesthetics.</p>
     </a>
   </div>
 </section>
+<section class="about-view" id="about" aria-labelledby="about-title" tabindex="-1">
+  <div class="about-inner">
+    <h2 class="about-title" id="about-title">About</h2>
+    <figure class="about-film">
+      <video controls muted loop playsinline preload="metadata" width="2928" height="1596" aria-labelledby="about-film-caption">
+        <source src="https://framerusercontent.com/assets/EH5Dm7L2jKIEPtvQzjyv11jT6s.mp4" type="video/mp4">
+        <a href="https://framerusercontent.com/assets/EH5Dm7L2jKIEPtvQzjyv11jT6s.mp4">Watch the Letterboxd video</a>
+      </video>
+      <figcaption id="about-film-caption">Picking a movie to watch from my Letterboxd watchlist.</figcaption>
+    </figure>
+    <div class="about-bio">
+      <p class="about-lead">People are fascinating. Making things for them is my excuse to investigate.</p>
+      <p>I came to design through sociology, so I’m always looking at how people move through systems – the habits, workarounds, and invisible rules that shape what they do. Working with people who stir the same curiosity is what energizes me.</p>
+      <p>Outside of design, I've been training Brazilian Jiu-Jitsu for 2 years and spend entire Sundays on cooking projects that disappear in twenty minutes. Both remind me that care shows up in the parts nobody has to notice.</p>
+      <p>I just graduated from the University of Washington and am now a master of design and engineering! Open to cool new roles.</p>
+    </div>
+    <div class="about-background">
+      <div>
+        <h3>Education</h3>
+        <ul class="about-records">
+          <li>
+            <div><p>MS Human Centered Design + Engineering</p><p>University of Washington, Seattle</p></div>
+            <time datetime="2026">2026</time>
+          </li>
+          <li>
+            <div><p>BA Sociology</p><p>University of Toronto, Toronto</p></div>
+            <time datetime="2021">2021</time>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <h3>Experience</h3>
+        <ul class="about-records">
+          <li>
+            <div><p>Sound Transit</p><p>AI Content and UX Designer, Seattle (Industry Sponsored Project)</p></div>
+            <time datetime="2026">2026</time>
+          </li>
+          <li>
+            <div><p>Verdigris</p><p>AI Product Designer, Seattle (Industry Sponsored Project)</p></div>
+            <time datetime="2025">2025</time>
+          </li>
+          <li>
+            <div><p>Elastic Path</p><p>Product Designer, Toronto</p></div>
+            <time datetime="2025">2025</time>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
 </main>
 <dialog id="project-sheet" aria-label="Case study">
   <div class="sheet-blur" aria-hidden="true"></div>
@@ -349,7 +399,7 @@ human behavior and aesthetics.</p>
 </dialog>
 <script type="module" src="project-sheet.js?v=carousel-open"></script>
 </div>
-<script type="module" src="page-scroll.js?v=name-pill"></script>
+<script type="module" src="page-scroll.js?v=about"></script>
 <script type="module" src="sounds.js?v=cuelume"></script>
 <script type="module">
 if (new URLSearchParams(location.search).has("annotate")) {
@@ -386,7 +436,7 @@ if (new URLSearchParams(location.search).has("annotate")) {
 <script type="module">
 const tune = new URLSearchParams(location.search).get("tune");
 if (tune !== null && tune !== "0") {
-  import("./tune.js?v=name-pill").then(({ mountHomepageTune }) => mountHomepageTune())
+  import("./tune.js?v=about").then(({ mountHomepageTune }) => mountHomepageTune())
     .catch(error => console.warn("Homepage controls could not load", error));
 }
 </script>
@@ -1664,7 +1714,7 @@ requestAnimationFrame(() => {
   }
   requestAnimationFrame(frame);
 
-  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=name-pill").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
+  if (qs.has("tune") && qs.get("tune") !== "0") import("./tune.js?v=about").then(m => m.mountTune(tuneApi,fetchGame)).catch(err => console.warn("Tune panel could not load", err));
 });
 // Everything the DialKit tune panel (tune.js) reads and drives
 const tuneApi = {

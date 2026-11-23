@@ -175,6 +175,109 @@
   }
 }
 
+.about-view {
+  min-block-size: 100dvh;
+  padding: var(--about-top, calc(96px + env(safe-area-inset-top, 0px)))
+    env(safe-area-inset-right, 0px)
+    calc(64px + env(safe-area-inset-bottom, 0px))
+    env(safe-area-inset-left, 0px);
+  background: var(--sky);
+  pointer-events: auto;
+}
+
+.about-view:focus { outline: none; }
+
+.about-inner {
+  width: 50%;
+  margin-inline: auto;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.about-title,
+.about-lead {
+  margin: 0;
+  font: 400 clamp(1.5rem, 1.15rem + 1vw, 2rem)/1.25 "Season Mix", "Stevie Sans Book", system-ui, sans-serif;
+  text-wrap: balance;
+}
+
+.about-film {
+  margin: 16px 0 32px;
+}
+
+.about-film video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2928 / 1596;
+  border-radius: 1px;
+  background: #f5f5f5;
+}
+
+.about-film figcaption,
+.about-records time {
+  color: #5a616e;
+  font: 400 .8125rem/1.45 "Necto Mono", monospace;
+}
+
+.about-film figcaption { margin-block-start: 8px; }
+
+.about-bio { max-width: 66ch; }
+.about-bio p + p { margin: 16px 0 0; }
+
+.about-background {
+  display: grid;
+  gap: 32px;
+  margin-block-start: 40px;
+}
+
+.about-background h3 {
+  margin: 0 0 12px;
+  font-size: 1.125rem;
+  font-weight: 400;
+}
+
+.about-records {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-records li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 16px;
+  padding-block: 12px;
+  border-top: 1px solid #e7e7e7;
+}
+
+.about-records p { margin: 0; }
+.about-records p + p {
+  margin-block-start: 2px;
+  color: #5a616e;
+  font-size: .9375rem;
+}
+
+.about-film video:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1023px) {
+  .about-inner { width: 72%; }
+}
+
+@media (max-width: 720px) {
+  .about-view {
+    --about-top: calc(172px + env(safe-area-inset-top, 0px));
+    padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
+  }
+  .about-inner { width: 100%; }
+  .about-film { margin-block-end: 24px; }
+  .about-background { margin-block-start: 32px; }
+}
+
 /* Keep the tuning panel below the navigation, including when every group is expanded. */
 .dialkit-panel[data-position="bottom-right"] {
   max-height: calc(100dvh - 112px);

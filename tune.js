@@ -11,7 +11,7 @@
 //   Colours     all 14 pickers, reset colours
 //   Reset       back to the tuned defaults (colours stay, as in grass-hills)
 import { createDialKit, createDialRoot } from "./vendor/dialkit/index.js";
-import { motionDials, portfolioMotion } from "./page-scroll.js?v=name-pill";
+import { motionDials, portfolioMotion } from "./page-scroll.js?v=about";
 
 const VIEW = [{ value: "0", label: "Scene" }, { value: "1", label: "Terrain" }];
 const FRAME = [{ value: "0", label: "Banner" }, { value: "1", label: "Hero 16:9" }];

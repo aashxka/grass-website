@@ -9,7 +9,8 @@ const clampProgress = value => Math.min(1, Math.max(0, value));
 const nav = document.getElementById("nav");
 const links = [...nav.querySelectorAll("a")];
 const thumb = nav.querySelector(".nav-thumb");
-const workLink = links[0];
+const workLink = nav.querySelector('[href="#work"]');
+const aboutLink = nav.querySelector('[href="#about"]');
 // The name, top left: a one-item nav that is selected on the landing page (whenever no nav item is).
 const homeLink = document.getElementById("home-link");
 const nameNav = homeLink.parentElement;
@@ -18,12 +19,14 @@ const intro = home.querySelector(".intro");
 const landscape = document.querySelector(".landscape");
 const work = document.getElementById("work");
 const workRail = work.querySelector(".work-rail");
+const about = document.getElementById("about");
+const sections = { home, work, about };
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const tuneControls = ".dialkit-root, .dialkit-version-overlay, [data-dialkit-ignore]";
 
 let duration = motionDials["Nav duration (ms)"][0];
 let grassSpeed = motionDials["Grass scroll speed (×)"][0];
-let introEnd = 0, workTop = 0;
+let introEnd = 0, workTop = 0, aboutTop = 0;
 let animation = 0, pendingPaint = 0, destination = null;
 let current, openedWork = false;
 
@@ -42,7 +45,9 @@ function placeThumb(animate) {
 function selectLink(animate) {
   const hashLink = links.find(link => link.hash === location.hash);
   const onWork = workTop > 0 && window.scrollY >= workTop - 2;
-  const next = hashLink && hashLink !== workLink ? hashLink : onWork ? workLink : undefined;
+  const onAbout = aboutTop > 0 && window.scrollY >= aboutTop - 2;
+  let next = onAbout ? aboutLink : onWork ? workLink : undefined;
+  if (hashLink && hashLink !== workLink && hashLink !== aboutLink && !onAbout) next = hashLink;
   if (current === next) return;
   const hasPrevious = Boolean(current);
   current?.removeAttribute("aria-current");
@@ -77,15 +82,20 @@ function paint() {
 }
 
 function measure() {
-  const workOffset = window.scrollY - workTop;
-  const wasInWork = workTop > 0 && workOffset >= -2 && destination === null;
+  const y = window.scrollY;
+  const previousTop = aboutTop > 0 && y >= aboutTop - 2 ? aboutTop : workTop;
+  const sectionOffset = y - previousTop;
+  const preserveScroll = previousTop > 0 && sectionOffset >= -2 && destination === null;
+  const wasInAbout = previousTop === aboutTop;
   const vh = window.innerHeight;
   const runway = Math.max(100, vh * (reducedMotion.matches ? 0.25 : 0.54) / grassSpeed);
   home.style.setProperty("--landscape-runway", runway + "px");
   introEnd = Math.ceil(intro.offsetTop + intro.offsetHeight);
   workTop = work.offsetTop;
-  if (wasInWork) {
-    window.scrollTo({ top: workTop + Math.max(0, workOffset), behavior: "instant" });
+  aboutTop = about.offsetTop;
+  if (preserveScroll) {
+    const top = wasInAbout ? aboutTop : workTop;
+    window.scrollTo({ top: top + Math.max(0, sectionOffset), behavior: "instant" });
   }
   paint();
 }
@@ -100,54 +110,51 @@ function stopAnimation() {
   destination = null;
 }
 
-function navigate(toWork, { animate = true, focusWork = false } = {}) {
+function navigate(section, { animate = true, focusSection = false } = {}) {
   stopAnimation();
   const from = window.scrollY;
-  const target = toWork ? workTop : 0;
+  const target = section.offsetTop;
   if (!animate || reducedMotion.matches || Math.abs(target - from) < 2) {
     window.scrollTo({ top: target, behavior: "instant" });
     paint();
-    if (toWork && focusWork) work.focus({ preventScroll: true });
+    if (focusSection) section.focus({ preventScroll: true });
     return;
   }
-  destination = toWork ? "work" : "home";
+  destination = section;
   const start = performance.now();
-  const scrollDuration = duration * Math.sqrt(Math.min(1, Math.abs(target - from) / workTop));
+  const scrollDuration = duration * Math.sqrt(Math.min(1, Math.abs(target - from) / Math.max(1, workTop)));
   function step(now) {
     const progress = clampProgress((now - start) / scrollDuration);
-    const end = toWork ? workTop : 0;
+    const end = section.offsetTop;
     // Use the same ease-out for navigation and scroll gestures.
     const eased = 1 - (1 - progress) ** 3;
     window.scrollTo({ top: from + (end - from) * eased, behavior: "instant" });
     if (progress < 1) animation = requestAnimationFrame(step);
     else {
       stopAnimation();
-      if (toWork && focusWork) work.focus({ preventScroll: true });
+      if (focusSection) section.focus({ preventScroll: true });
     }
     schedulePaint();
   }
   animation = requestAnimationFrame(step);
 }
 
-function openFromNav(toWork, focusWork = false) {
-  const url = location.pathname + location.search + (toWork ? "#work" : "");
+function openFromNav(section, focusSection = false) {
+  const url = location.pathname + location.search + (section === home ? "" : "#" + section.id);
   if (url !== location.pathname + location.search + location.hash) history.pushState(null, "", url);
   selectLink(true);
-  navigate(toWork, { focusWork });
+  navigate(section, { focusSection });
 }
 
-workLink.addEventListener("click", event => {
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  event.preventDefault();
-  const goingToWork = destination === "work" || window.scrollY >= workTop - 2;
-  openFromNav(!goingToWork, event.detail === 0);
-});
-
-homeLink.addEventListener("click", event => {
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  event.preventDefault();
-  openFromNav(false);
-});
+for (const [link, section] of [[homeLink, home], [workLink, work], [aboutLink, about]]) {
+  link.addEventListener("click", event => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const toggleWork = section === work && (destination === work || (destination === null && current === workLink));
+    const next = toggleWork ? home : section;
+    openFromNav(next, next !== home && event.detail === 0);
+  });
+}
 
 // Let the browser handle wheel momentum, touch panning and scrollbar dragging.
 // Complete a partial section transition when the native gesture ends.
@@ -161,7 +168,7 @@ function settleScroll() {
   clearTimeout(settleTimer);
   if (!moved || destination !== null) return;
   moved = false;
-  if (window.scrollY > 0 && window.scrollY < workTop) openFromNav(towardWork);
+  if (window.scrollY > 0 && window.scrollY < workTop) openFromNav(towardWork ? work : home);
 }
 
 addEventListener("scroll", () => {
@@ -180,14 +187,15 @@ addEventListener("scroll", () => {
 document.addEventListener("scrollend", settleScroll);
 
 function interruptNavigation(event) {
-  if (!workLink.contains(event.target) && !homeLink.contains(event.target) && !event.target.closest?.(tuneControls)) stopAnimation();
+  if (event.type === "pointerdown" && event.target.closest?.("#nav a, #home-link, " + tuneControls)) return;
+  stopAnimation();
 }
 addEventListener("pointerdown", interruptNavigation, { passive: true });
 addEventListener("wheel", interruptNavigation, { passive: true });
 addEventListener("keydown", event => {
-  if (event.defaultPrevented) return;
-  if (event.key === "Escape" && (location.hash === "#work" || window.scrollY > introEnd)) {
-    openFromNav(false);
+  if (event.defaultPrevented || event.target.closest?.(".about-film video")) return;
+  if (event.key === "Escape" && window.scrollY < aboutTop - 2 && (location.hash === "#work" || window.scrollY > introEnd)) {
+    openFromNav(home);
   } else if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) {
     stopAnimation();
   }
@@ -195,7 +203,8 @@ addEventListener("keydown", event => {
 addEventListener("hashchange", () => selectLink(true));
 addEventListener("popstate", () => {
   selectLink(true);
-  if (location.hash === "#work" || !location.hash) navigate(location.hash === "#work", { animate: false });
+  const section = Object.hasOwn(sections, location.hash.slice(1)) ? sections[location.hash.slice(1)] : null;
+  if (section || !location.hash) navigate(section || home, { animate: false });
 });
 addEventListener("resize", measure);
 reducedMotion.addEventListener("change", () => {
@@ -208,12 +217,13 @@ portfolioMotion.addEventListener("change", event => {
   measure();
 });
 
-const startInWork = location.hash === "#work";
 selectLink(false);
 measure();
-if (startInWork) navigate(true, { animate: false });
+if (location.hash === "#work") navigate(work, { animate: false });
+if (location.hash === "#about") navigate(about, { animate: false });
 new ResizeObserver(measure).observe(intro);
 new ResizeObserver(measure).observe(home);
+new ResizeObserver(measure).observe(work);
 new ResizeObserver(() => placeThumb(false)).observe(nav);
 const font = document.fonts
   ? Promise.all([document.fonts.load('14px "Stevie Sans Book"'), document.fonts.load('15px "Necto Mono"')])
