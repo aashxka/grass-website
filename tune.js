@@ -10,6 +10,7 @@
 //   Wind        Seattle live wind, strength, gusts, pause
 //   Colours     all 14 pickers, reset colours
 //   Reset       back to the tuned defaults (colours stay, as in grass-hills)
+import { sheetDials, sheetMotion } from "./sheet-motion.js";
 import { createDialKit, createDialRoot } from "./vendor/dialkit/index.js";
 import { motionDials, portfolioMotion } from "./page-scroll.js?v=about";
 
@@ -295,6 +296,12 @@ export async function mountHomepageTune() {
     id: "portfolio-scroll-motion",
     persist: { key: "portfolio-scroll-motion" },
   }).subscribe(values => portfolioMotion.dispatchEvent(new CustomEvent("change", { detail: values })));
+  const opening = createDialKit("Project opening", sheetDials, {
+    id: "project-opening", persist: { key: "portfolio-project-opening-v1" },
+  });
+  const configureOpening = values => Object.assign(sheetMotion, values);
+  opening.subscribe(configureOpening);
+  configureOpening(opening.getValues());
   mountCardHoverTune();
 }
 

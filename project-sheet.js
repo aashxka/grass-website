@@ -1,3 +1,4 @@
+import { sheetMotion } from "./sheet-motion.js";
 // Card → sheet, edge peek and back chip: ported value for value from the Framer homepage
 // (PageProjectInteractions.tsx — SHEET, SHEET_MORPH, SHEET_BLUR and BACK on Home), so both sites open
 // a case study the same way.
@@ -320,6 +321,22 @@ function heroDestination(frame) {
   return { left: left * scale, top: top * scale, width: width * scale, height: height * scale };
 }
 
+let travelEnds = 0;
+const cachedTargets = new Map();
+const targetKey = () => [entry.url, content.clientWidth, content.clientHeight].join("|");
+const travelEase = () => `cubic-bezier(.16,${sheetMotion["Ease out"]},.28,1)`;
+
+function aimHero(hero, target, duration) {
+  const transform = `translate(${target.left - parseFloat(hero.style.left)}px, ${target.top - parseFloat(hero.style.top)}px) scale(${target.width / parseFloat(hero.style.width)}, ${target.height / parseFloat(hero.style.height)})`;
+  if (hero.style.transform === transform || hero.dataset.target === transform) return;
+  const current = getComputedStyle(hero).transform;
+  hero.getAnimations().forEach(animation => animation.cancel());
+  hero.dataset.target = transform;
+  hero.style.transform = transform;
+  hero.animate([{ transform: current }, { transform }], { duration, easing: travelEase() });
+  travelEnds = performance.now() + duration;
+}
+
 function reveal() {
   if (!entry || closing || ready) return;
   ready = true;
@@ -336,24 +353,18 @@ function reveal() {
       const hero = openingHero;
       const target = heroDestination(frame);
       if (target) {
-        const timing = springCurve(SHEET_MORPH.open);
-        const dx = target.left - parseFloat(hero.style.left);
-        const dy = target.top - parseFloat(hero.style.top);
-        const sx = target.width / parseFloat(hero.style.width);
-        const sy = target.height / parseFloat(hero.style.height);
-        hero.animate([{ transform: "none" }, {
-          transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
-        }], { ...timing, fill: "forwards" });
-        pageAt = performance.now() + timing.duration;
+        cachedTargets.set(targetKey(), target);
+        aimHero(hero, target, Math.max(60, travelEnds - performance.now()));
       }
+      pageAt = Math.max(performance.now(), travelEnds) + sheetMotion["Text delay (ms)"];
       openingHero = null;
       hero.dataset.transitionHero = "";
       hero.animate([{ opacity: 1 }, { opacity: 0 }], {
-        duration: SHEET_MORPH.contentIn, delay: Math.max(0, pageAt - performance.now()), fill: "forwards"
+        duration: sheetMotion["Text fade (ms)"], delay: Math.max(0, pageAt - performance.now()), fill: "forwards"
       }).onfinish = () => hero.remove();
     }
     content.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: SHEET_MORPH.contentIn,
+      duration: sheetMotion["Text fade (ms)"],
       delay: Math.max(0, pageAt - performance.now()),
       easing: SHEET_MORPH.ease,
       fill: "backwards",
@@ -498,7 +509,7 @@ function load() {
     try { path = new URL(doc.URL).pathname; } catch {}
     if (doc.URL === "about:blank" || !samePath(path, target.pathname)) return;
     wire(doc);
-    if (doc.readyState === "loading" || waitingForFonts) return;
+    if (waitingForFonts || (doc.readyState === "loading" && !doc.body?.childElementCount)) return;
     decorate(doc);
     const fonts = doc.fonts;
     if (!fonts || fonts.status === "loaded") {
@@ -540,7 +551,23 @@ function fitPage() {
 }
 new ResizeObserver(fitPage).observe(content);
 
+function prepareCard(card) {
+  if (entry || !card.hasAttribute("data-study")) return;
+  const url = studyPath(card);
+  if (content.firstElementChild?.getAttribute("src") === url) return;
+  const frame = document.createElement("iframe");
+  frame.title = cardTitle(card);
+  frame.src = url;
+  content.replaceChildren(frame);
+}
+for (const card of cards) {
+  for (const event of ["pointerenter", "pointerdown", "focus"]) {
+    card.addEventListener(event, () => prepareCard(card));
+  }
+}
+
 function mountContent() {
+  if (entry.study && content.firstElementChild?.getAttribute("src") === entry.url) return;
   content.replaceChildren();
   if (entry.study) {
     const frame = document.createElement("iframe");
@@ -618,7 +645,7 @@ function grow() {
     pageAt = 0;
   } else {
     if (fromCard) {
-      const curve = springCurve(SHEET_MORPH.open);
+      const curve = { duration: sheetMotion["Card travel (ms)"], easing: travelEase() };
       openingHero = document.createElement("img");
       openingHero.src = cover.currentSrc || cover.src;
       openingHero.alt = "";
@@ -629,17 +656,23 @@ function grow() {
         width: from.width + "px", height: from.height + "px",
       });
       box.append(openingHero);
+      const measured = heroDestination(content.querySelector("iframe")) ?? cachedTargets.get(targetKey());
+      // A cold click starts moving toward the reading column while the frame lays out.
+      const width = Math.min(to.width, Math.max(from.width, to.width * 0.55));
+      const target = measured ?? { left: (to.width - width) / 2, top: to.height * 0.06,
+        width, height: width * from.height / from.width };
+      aimHero(openingHero, target, sheetMotion["Card travel (ms)"]);
       neighborAnimations = cards.flatMap((card, index) => {
         if (card === entry.card || !visibleBox(card)) return [];
         const distance = index < entry.index ? -from.left : innerWidth - from.right;
-        return [card.animate([{ translate: "0px" }, { translate: distance + "px" }],
+        return [card.animate([{ translate: "0px" }, { translate: distance * sheetMotion["Neighbor travel (%)"] / 100 + "px" }],
           { ...curve, fill: "both" })];
       });
     }
     animations.push(
       panel.animate([{ transform: morphTransform(from, to) }, { transform: MORPH_REST }], springCurve(SHEET_MORPH.open)),
       panel.animate([{ opacity: 0 }, { opacity: 1 }], {
-        duration: fromCard ? SHEET_MORPH.surfaceIn : SHEET_MORPH.zoomIn,
+        duration: fromCard ? sheetMotion["Sheet fade (ms)"] : SHEET_MORPH.zoomIn,
         easing: SHEET_MORPH.ease,
       })
     );
