@@ -89,7 +89,7 @@ DialKit 2.1.0's plain-JavaScript build is vendored in `vendor/dialkit/` (MIT, Jo
 
 `sounds.js` uses vendored Cuelume 0.2.8 (MIT) to synthesize interaction sounds:
 
-- Hover: `tap` in the press theme, except on the ball and case-study back controls.
+- Hover: `select` in the mech theme, except on the ball and case-study back controls.
 - Press: `toggle` in the mech theme; the ball plays bubble `navigate`.
 - Back controls play bubble `close` only on click.
 - Active/current and selected items stay silent.

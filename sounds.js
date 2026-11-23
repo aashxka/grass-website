@@ -1,4 +1,4 @@
-// Hover: press tap. Press: mech toggle; ball: bubble navigate; back: bubble close on click.
+// Hover: mech select. Press: mech toggle; ball: bubble navigate; back: bubble close on click.
 import { play, setTheme, unlock } from "cuelume";
 
 setTheme("mech");
@@ -34,7 +34,7 @@ const startAudio = () => {
 addEventListener("pointerdown", startAudio, true);
 addEventListener("keydown", startAudio, true);
 
-/* ── Hover: press tap ── */
+/* ── Hover: mech select ── */
 
 let hovered = null;    // the clickable under the pointer now
 let lastSoundAt = 0;
@@ -51,7 +51,7 @@ addEventListener("pointerover", event => {
   if (!target || target.matches(`${BALL}, ${SHEET_BACK}`) || !moved || !finePointer.matches || !audioAllowed()) return;
   const now = performance.now();
   if (now - lastSoundAt < HOVER_GAP) return;
-  play("tap", { theme: "press" });
+  play("select", { theme: "mech" });
   lastSoundAt = now;
 }, true);
 addEventListener("pointermove", event => {
