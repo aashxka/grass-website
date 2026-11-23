@@ -407,7 +407,7 @@ function load() {
       if (/bricolage[\\s_-]*grotesque/i.test(family)) families.add(family);
     }
     style.textContent = FRAME_CSS + Array.from(families, family =>
-      `@font-face { font-family: ${JSON.stringify(family)}; src: local("Season Mix Medium"), local("SeasonMix-Medium"), local("Season Mix TRIAL Medium"), local("SeasonMix-TRIAL-Medium"); font-weight: 1 1000; font-display: swap; }`
+      `@font-face { font-family: ${JSON.stringify(family)}; src: url("${location.origin}/fonts/season-mix-trial-regular.woff") format("woff"); font-weight: 1 1000; font-display: swap; }`
     ).join("\n");
     doc.head.append(style);
     // A page without phone breakpoints asks for a fixed viewport (Framer writes width=1200). Phones honour
