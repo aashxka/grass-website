@@ -48,7 +48,11 @@ for (const [index, card] of cards.entries()) {
     openSheet(card);
   });
 }
-function dismiss() {
+async function dismiss() {
+  if (sheet.dataset.closing) return;
+  sheet.dataset.closing = "true";
+  await closeSheet();
+  delete sheet.dataset.closing;
   if (history.state?.projectIndex != null) history.back();
 }
 back.addEventListener("click", dismiss);
