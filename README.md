@@ -2,7 +2,7 @@
 
 Aashika's portfolio hero: rolling grass hills, a wooden desk with a cream computer and a coffee set, drawn in real time with WebGL2. Every blade is its own shape and sways on its own, and the wind follows Seattle's live wind.
 
-It is a static page with no build step: `index.html`, `desk.js` (the desk set), `touch.js` (blades part under the cursor or a finger), `crt-face.jpg` (the screen), `fonts/stevie-sans-book.woff` (the nav font), `aashika-ashok-resume.pdf` (her resume), and `tune.js` + `vendor/dialkit/` for the optional tune panel.
+It is a static page with no build step: `index.html`, `desk.js` (the desk set), `touch.js` (blades part under the cursor or a finger), `crt-face.jpg` (the screen), `fonts/stevie-sans-book.woff` (the nav font), `aashika-ashok-resume.pdf` (her resume), `sounds.js` + `vendor/cuelume/` (interface sounds), and `tune.js` + `vendor/dialkit/` for the optional tune panel.
 
 ## Run it
 
@@ -84,6 +84,19 @@ Panel values are saved in your browser (`localStorage` key `grass-website-tune`)
 A separate **Card hover** panel tunes the Work covers' hover: the spring (stiffness/damping/mass, or duration/bounce), lift (scale) and the shadow's offset, blur, opacity and colour. **Hold hover** pins every cover in its hovered state and **Replay on first card** bounces one in and out. Its values live under `localStorage` key `grass-website-card-hover`; the shipped defaults are the `--cover-*` custom properties on `.work-rail` in `index.html`.
 
 DialKit 2.1.0's plain-JavaScript build is vendored in `vendor/dialkit/` (MIT, Josh Puckett); `tune.js` builds the panel and drives the scene through a small API that `index.html` hands it.
+
+## Sounds
+
+`sounds.js` gives everything clickable a sound, using [Cuelume](https://github.com/danielwh2/cuelume) 0.2.8's mech theme (MIT, Daniel Belyi, vendored in `vendor/cuelume/` and mapped as `cuelume` in the import map). The sounds are synthesised live with Web Audio, so there are no audio files.
+
+| Moment | Cue |
+| --- | --- |
+| Mouse lands on a clickable thing (nav, name, Work cards, the sheet's close gap, the ball) | `select`: a detent that rises toward later siblings and falls toward earlier ones; at most one every 50 ms |
+| Pressing anything clickable | `toggle`: one snap |
+| Pressing the ball | `navigate` in the bubble theme |
+| Going back from a case study (close gap, back chip, "Go back") | `close` |
+
+A mouse sounds on press-down; touch, pen and Enter/Space sound on the click itself, so a scroll that starts on a card stays silent. Hover is mouse-only and stays quiet until the visitor's first click or key press, since browsers block sound before then. It also stays quiet when the page moves under a still pointer (scrolling, the sheet growing). Only the homepage and the ball are covered: the case studies inside the sheet, and the `?tune` and `?annotate` panels, have no sounds.
 
 ## Case-study sheet
 
