@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Category search at Elastic Path · Aashika Ashok</title>
 <style>
-@font-face { font-family: "Season Mix"; src: url("fonts/season-mix-trial-regular.woff"); }
-@font-face { font-family: "Stevie Sans Book"; src: url("fonts/stevie-sans-book.woff"); }
+@font-face { font-family: "Season Mix"; src: url("fonts/season-mix-trial-regular.woff") format("woff"); font-display: swap; }
+@font-face { font-family: "Stevie Sans Book"; src: url("fonts/stevie-sans-book.woff") format("woff"); font-display: swap; }
 * { box-sizing: border-box; }
-body { margin: 0; background: white; color: #1b1b1b; font: 400 18px/1.55 "Stevie Sans Book", sans-serif; }
+body { margin: 0; background: white; color: #1b1b1b; font: 400 clamp(1rem,1.5vw,1.125rem)/1.55 "Stevie Sans Book", system-ui, sans-serif; }
 main { max-width: 1180px; margin: auto; padding: clamp(36px,7vw,100px) clamp(20px,5vw,64px); }
 header, section { max-width: 680px; margin: 0 auto; }
-h1,h2 { font-family: "Season Mix",serif; font-weight: 400; line-height: 1.08; text-wrap: balance; }
-h1 { font-size: clamp(40px,5.6vw,78px); margin: .32em 0; }
+h1,h2 { font-family: "Season Mix", Georgia, serif; font-weight: 400; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: clamp(40px,5.6vw,78px); letter-spacing: -0.03em; line-height: 1.08; margin: .32em 0; }
 h2 { font-size: clamp(30px,3.2vw,46px); margin: 0 0 .5em; }
-p { margin: 0 0 1em; }
+p { max-inline-size: 70ch; margin: 0 0 1em; text-wrap: pretty; }
 .meta { font-size: 14px; color: #5a616e; }
 .image-space { aspect-ratio: 16/9; background: #f5f5f3; border-radius: 10px; margin: clamp(32px,5vw,72px) 0; }
 section + section { margin-top: 48px; }
