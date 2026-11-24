@@ -4,12 +4,12 @@
 //
 //     0ms  press: the card dips to 0.98 under the pointer and lifts back on release
 //     0ms  click: the sheet grows out of the card's exact rect on one critically damped spring (0.44s
-//          response) and fades in over its first 140ms, so the card dissolves into it. Nothing waits
+//          response) and fades in over its first 70ms, so the card dissolves into it. Nothing waits
 //          for the case study to load.
-//  ~310ms  once the sheet is 94% open and the case study can paint, the page fades in (240ms)
+//          once the sheet is 24% open and the case study can paint, the page fades in (240ms)
 //   hover  the 16px gap around the sheet is the close button: the back chip follows the pointer, the
 //          sheet slides 24px away from that edge, its shadow deepens and the blur behind it clears
-//   close  the page fades out (110ms) while the sheet springs back into the card (0.34s response) and
+//   close  the page fades out (160ms) while the sheet springs back into the card (0.34s response) and
 //          dissolves over its last stretch. A close mid-open turns around from wherever the sheet is.
 // Reduced motion: cross-fades only.
 
@@ -18,12 +18,12 @@ const SHEET_TIMING = { fontWait: 350, loadError: 15000, poll: 30 }; // ms
 const SHEET_MORPH = {
   open: appleSpring(0.44),
   close: appleSpring(0.34),
-  surfaceIn: 140, // ms
+  surfaceIn: 70, // ms
   contentIn: 240, // ms
-  contentAt: 0.94, // open progress before the page may show, so it never shows mid-stretch
-  contentOut: 110, // ms
-  dissolveFrom: 0.7, // close progress where the sheet starts fading into the card
-  dissolveTo: 0.98,
+  contentAt: 0.24, // open progress before the page may show, so it never shows mid-stretch
+  contentOut: 160, // ms
+  dissolveFrom: 0.4, // close progress where the sheet starts fading into the card
+  dissolveTo: 1,
   zoom: 0.96, // a sheet without a card on screen zooms in from, and back to, this scale
   zoomIn: 180, // ms
   zoomOut: 0.9, // close progress by which a centred sheet has faded out
@@ -857,10 +857,10 @@ if (new URLSearchParams(location.search).has("tune") && new URLSearchParams(loca
         "Fade starts (%)": percent(m.dissolveFrom),
         "Fade ends (%)": percent(m.dissolveTo),
         "Centered fade ends (%)": percent(m.zoomOut),
-        "Backdrop fade (ms)": ms(200),
+        "Backdrop fade (ms)": ms(120),
       },
       Press: { "Down (ms)": ms(m.pressIn), "Release (ms)": ms(m.pressOut) },
-      Edge: { "Back chip": spring(CHIP_SPRING), "Phone arrow": spring(TURN_SPRING), "Peek (ms)": ms(200) },
+      Edge: { "Back chip": spring(CHIP_SPRING), "Phone arrow": spring(TURN_SPRING), "Peek (ms)": ms(240) },
     }, { id: "project-sheet-motion", persist: { key: "portfolio-project-sheet-motion" } });
 
     function applyMotion({ Open, Close, Press, Edge }) {
