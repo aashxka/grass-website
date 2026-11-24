@@ -205,6 +205,7 @@ export async function mountHomepageTune() {
       ["List line height", "--list-leading", 1, 2.4, 0.01, ""],
     ],
     Spacing: [
+      ["Hero text width (%)", "--hero-text-width", 10, 100, 1, "%"],
       ["Headline → list (px)", "--list-gap", 0, 200, 1, "px"],
       ["Row gap (px)", "--row-gap", 0, 80, 1, "px"],
       ["Year → place (px)", "--label-gap", 0, 80, 1, "px"],
@@ -238,8 +239,8 @@ export async function mountHomepageTune() {
   };
   const headline = homepage.querySelector(".intro-headline");
   const parts = [
-    { name: "Name", element: homepage.querySelector(".intro-name"), colourProperty: "--name-ink", font: "Stevie Sans Book", colour: "#1b1b1b", copy: nameCopy },
-    { name: "Headline", element: headline, font: "Season Mix", colour: "#1b1b1b",
+    { name: "Name", defaultFont: "Google Font", element: homepage.querySelector(".intro-name"), colourProperty: "--name-ink", font: "Stevie Sans Book", colour: "#1b1b1b", copy: nameCopy },
+    { name: "Headline", defaultFont: "Desktop font", element: headline, font: "Season Mix", colour: "#1b1b1b",
       copy: { get: () => headline.textContent, set: value => { headline.textContent = value; } } },
     { name: "Years & places", element: list, property: "--label-font", colourProperty: "--ink-50", font: "Stevie Sans Book", colour: "#1b1b1b80" },
     { name: "Roles", element: list, property: "--role-font", colourProperty: "--ink", font: "Stevie Sans Book", colour: "#1b1b1b" },
@@ -251,7 +252,7 @@ export async function mountHomepageTune() {
       _collapsed: true,
       ...(part.copy ? { Text: text(part.copy.get()) } : {}),
       Colour: colour(part.colour),
-      Font: fontSelect(part.font),
+      Font: fontSelect(part.defaultFont ?? part.font),
       "Google font family": text("", "Exact family name, e.g. Inter"),
       "Installed font name": text("", "Exact installed family name"),
       "Choose desktop font file": { type: "action" },
