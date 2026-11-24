@@ -96,31 +96,19 @@
   opacity: 0;
 }
 
-/* Chrome rim and soft reflections on the landing-page name badge. */
-@property --name-reflection-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 18deg;
-}
+/* Polished silver with fine spectral reflections running across the face. */
 .homepage .intro-name:has(#home-link[aria-current="page"]) .nav-thumb {
   opacity: 1;
-  box-sizing: border-box;
   pointer-events: none;
-  border: 1.5px solid transparent;
+  border: 0;
   background:
-    radial-gradient(ellipse at 25% 0%, #fff9, transparent 58%) padding-box,
-    linear-gradient(172deg, #fdfdff 4%, #e6e8ed 42%, #cbd0d7 60%, #eef0f4 88%) padding-box,
-    conic-gradient(from var(--name-reflection-angle), #fefeff, #81909e 12%, #d8d2ec 21%, white 30%, #768392 41%, #c8dfed 49%, white 56%, #747985 68%, #e6d9e5 78%, white 89%, #fefeff) border-box;
-  box-shadow: inset 0 1px 1px #fffc, inset 0 -1px 2px #747e8b55, 0 2px 4px #43516629;
-}
-@keyframes name-metal-reflection {
-  from { --name-reflection-angle: 18deg; }
-  to { --name-reflection-angle: 378deg; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .homepage .intro-name:has(#home-link[aria-current="page"]) .nav-thumb {
-    animation: name-metal-reflection 8s linear infinite;
-  }
+    linear-gradient(19deg,
+      transparent 9%, #91a6bf 11%, #e4f7ff 12%, #ffc8a8 13%, transparent 15%,
+      transparent 61%, #a7b0c3 63%, #ffe2a6 64%, #fff8c5 65%,
+      #ffc1ce 66%, #b9e7f6 67%, transparent 69%),
+    linear-gradient(160deg, #c3cedb 0%, #f8fbfd 23%, #e7eaf0 38%,
+      #ffffff 55%, #d0d4dd 73%, #9ca7b7 88%, #e8edf2 100%);
+  box-shadow: 0 2px 7px #52607420;
 }
 .homepage .intro-name a[aria-current="page"] { color: var(--name-ink, #1b1b1b); }
 
