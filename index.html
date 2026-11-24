@@ -203,7 +203,7 @@
   .sheet-blur {
     position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0;
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    transition: opacity 0.2s var(--sheet-blur-ease);
+    transition: opacity 0.12s var(--sheet-blur-ease);
   }
   #project-sheet[data-blurred] .sheet-blur { opacity: 1; transition-duration: 0.32s; }
   .sheet-strip {
@@ -214,13 +214,13 @@
   #project-sheet[data-closing] .sheet-strip { pointer-events: none; }
   .sheet-box {
     position: absolute; inset: var(--sheet-margin, 16px); z-index: 1; pointer-events: none;
-    transition: transform 0.2s var(--sheet-peek-ease);
+    transition: transform 0.24s var(--sheet-peek-ease);
   }
   .sheet-panel {
     position: absolute; inset: 0; overflow: hidden; outline: none; opacity: 0;
     border-radius: var(--sheet-radius); background: var(--page-color, #ffffff);
     box-shadow: var(--sheet-shadow); pointer-events: auto;
-    transition: box-shadow 0.2s var(--sheet-peek-ease), background-color 0.24s ease;
+    transition: box-shadow 0.24s var(--sheet-peek-ease), background-color 0.24s ease;
   }
   #project-sheet[data-peek] .sheet-panel { box-shadow: var(--sheet-peek-shadow); }
   #project-sheet[data-closing] .sheet-panel { pointer-events: none; }
@@ -306,7 +306,7 @@
   <a href="/" id="home-link" data-label="Aashika Ashok" aria-label="Aashika Ashok" aria-current="page"><span class="nav-label">Aashika Ashok</span></a>
 </h1>
 <section class="intro" aria-labelledby="intro-title">
-  <p class="intro-headline" id="intro-headline">Product designer obsessed with simplicity,
+  <p class="intro-headline" id="intro-headline">Aashika is a product designer obsessed with simplicity,
 human behavior and aesthetics.</p>
   <ul class="intro-list" aria-label="Experience">
     <li><span class="intro-label"><span>26</span><span>Sound Transit</span></span><span class="intro-role">Search Interface Redesign + LLM Content</span></li>
