@@ -25,9 +25,10 @@
   --name-size: 14px;
   --name-top: 24px;
   --name-left: 24px;
-  --headline-size: 32px;
+  --hero-text-width: 100%;
+  --headline-size: 36px;
   --headline-leading: 1.44;
-  --headline-tracking: 0em;
+  --headline-tracking: 0.005em;
   --list-size: 14px;
   --list-leading: 1.5;
   --list-gap: 48px;          /* headline → list */
@@ -111,14 +112,15 @@
 /* The block is as wide as its longest line and centred; its middle sits at --block-centre of the
    window (index.html measures its height into --block-h), never closer than --block-min-top. */
 .intro {
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   margin-inline: auto;
   margin-top: max(var(--block-min-top), calc(var(--block-centre) * 1svh - var(--block-h, 18rem) / 2));
 }
 
 .intro-headline {
-  margin: 0;
+  width: var(--hero-text-width);
+  margin: 0 auto;
   color: var(--ink);
   font-family: var(--intro-font, "Season Mix"), "Stevie Sans Book", system-ui, sans-serif;
   font-size: var(--headline-size);
