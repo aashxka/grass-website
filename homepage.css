@@ -96,18 +96,14 @@
   opacity: 0;
 }
 
-/* Polished silver with fine spectral reflections running across the face. */
+/* Polished silver face. */
 .homepage .intro-name:has(#home-link[aria-current="page"]) .nav-thumb {
   opacity: 1;
   pointer-events: none;
   border: 0;
   background:
-    linear-gradient(19deg,
-      transparent 9%, #91a6bf 11%, #e4f7ff 12%, #ffc8a8 13%, transparent 15%,
-      transparent 61%, #a7b0c3 63%, #ffe2a6 64%, #fff8c5 65%,
-      #ffc1ce 66%, #b9e7f6 67%, transparent 69%),
-    linear-gradient(160deg, #c3cedb 0%, #f8fbfd 23%, #e7eaf0 38%,
-      #ffffff 55%, #d0d4dd 73%, #9ca7b7 88%, #e8edf2 100%);
+    linear-gradient(160deg, #c6c6c6 0%, #fafafa 23%, #e8e8e8 38%,
+      #fff 55%, #d3d3d3 73%, #a5a5a5 88%, #ededed 100%);
   box-shadow: 0 2px 7px #52607420;
 }
 .homepage .intro-name a[aria-current="page"] { color: var(--name-ink, #1b1b1b); }
